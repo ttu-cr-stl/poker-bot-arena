@@ -44,6 +44,16 @@ def min_raise_strategy(message: Dict[str, object]) -> Tuple[str, int | None]:
     return ActionType.FOLD.value, None
 
 
+def random_strategy(message: Dict[str, object]) -> Tuple[str, int | None]:
+    """Random bot: choose a random action."""
+    legal = message.get("legal", [])
+    if "RAISE_TO" in legal and message.get("min_raise_to"):
+        return ActionType.RAISE_TO.value, message["min_raise_to"]
+    if "CALL" in legal:
+        return ActionType.CALL.value, None
+    return ActionType.FOLD.value, None
+
+
 # Update this list to try out alternate personalities per bot.
 # (team name, join code, decision function)
 STRATEGIES: List[Tuple[str, str, Callable[[Dict[str, object]], Tuple[str, int | None]]]] = [
@@ -111,6 +121,7 @@ async def run_bot(
 
                 elif msg_type == "match_end":
                     LOGGER.info("Bot %s received match_end", team)
+                    stop_event.set()
                     break
 
     except Exception as exc:
