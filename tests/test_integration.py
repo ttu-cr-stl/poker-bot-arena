@@ -4,10 +4,12 @@ import time
 
 import pytest
 
+from host.game import GameEngine
 from host.models import ActionType, Phase, TableConfig
 from host.server import ClientSession, HostServer, PendingAction
 
 
+# Fake sockets so we can exercise async paths without opening real connections.
 class DummyWebSocket:
     def __init__(self) -> None:
         self.sent: list[str] = []
@@ -25,8 +27,12 @@ class DummyTask:
         pass
 
 
-def setup_server(num_players: int = 2) -> tuple[HostServer, list[ClientSession], list[DummyWebSocket]]:
-    server = HostServer(TableConfig(seats=num_players, starting_stack=200, sb=5, bb=10, move_time_ms=100))
+def setup_server(num_players: int = 2, move_time_ms: int = 100) -> tuple[HostServer, list[ClientSession], list[DummyWebSocket]]:
+    server = HostServer(
+        TableConfig(seats=num_players, starting_stack=200, sb=5, bb=10, move_time_ms=move_time_ms),
+        presentation_mode=False,
+        presentation_delay_ms=200,
+    )
     sessions: list[ClientSession] = []
     sockets: list[DummyWebSocket] = []
 
@@ -147,7 +153,7 @@ def test_maybe_finish_hand_emits_match_end(monkeypatch):
 
     messages: list[tuple[str, dict[str, object]]] = []
 
-    async def capture_broadcast(msg_type, payload):
+    async def capture_broadcast(msg_type, payload, **kwargs):
         messages.append((msg_type, payload))
 
     monkeypatch.setattr(server, "_broadcast", capture_broadcast)
@@ -158,3 +164,67 @@ def test_maybe_finish_hand_emits_match_end(monkeypatch):
     assert "end_hand" in types
     assert "match_end" in types
     assert server.engine.hand is None
+
+
+def test_spectator_snapshot_contains_hand_state():
+    engine = GameEngine(TableConfig(seats=4, starting_stack=1_000, sb=10, bb=20))
+    for idx in range(4):
+        engine.assign_seat(f"Team{idx}", f"CODE{idx}")
+    ctx = engine.start_hand(seed=123)
+
+    snapshot = engine.spectator_snapshot()
+    assert snapshot["hand"]["hand_id"] == ctx.hand_id
+    seats = snapshot["hand"]["seats"]
+    assert isinstance(seats, list)
+    assert len(seats) == 4
+    assert snapshot["config"]["sb"] == 10
+    assert snapshot["hand"]["phase"] == "PRE_FLOP"
+
+
+def test_broadcast_spectator_snapshot_sends_payload():
+    server, _, _ = setup_server()
+    spectator = DummyWebSocket()
+
+    async def run():
+        async with server.lock:
+            server.live_spectators.add(spectator)
+        await server._broadcast_spectator_snapshot()
+
+    asyncio.run(run())
+
+    assert spectator.sent, "Expected spectator to receive snapshot payload"
+    payload = json.loads(spectator.sent[-1])
+    assert payload["type"] == "spectator_snapshot"
+
+
+def test_schedule_timer_disabled_when_move_time_zero():
+    server, _, _ = setup_server(move_time_ms=0)
+    ctx = server.engine.start_hand(seed=42)
+    actor = server.engine.next_actor()
+    assert actor is not None
+
+    asyncio.run(server._schedule_timer(actor))
+
+    assert server.pending_action is None
+
+
+def test_skip_request_applies_fallback(monkeypatch):
+    server, _, _ = setup_server(move_time_ms=0)
+    server.engine.start_hand(seed=77)
+
+    events: list[dict[str, object]] = []
+    messages: list[tuple[str, dict[str, object]]] = []
+
+    async def capture_events(payload):
+        events.extend(payload)
+
+    async def capture_broadcast(msg_type, payload, **kwargs):
+        messages.append((msg_type, payload))
+
+    monkeypatch.setattr(server, "_broadcast_events", capture_events)
+    monkeypatch.setattr(server, "_broadcast", capture_broadcast)
+
+    asyncio.run(server._handle_skip_request())
+
+    assert events, "Expected fallback events after skip"
+    assert any(msg for msg in messages if msg[0] == "admin")

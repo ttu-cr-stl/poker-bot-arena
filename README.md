@@ -40,6 +40,14 @@ A single-table No-Limit Texas Hold'em arena for head-to-head or multiway bot com
 - View the technical wire protocol and engine behavior: [`TECHNICAL_SPEC.md`](./TECHNICAL_SPEC.md)
 - Manual playtest walkthrough: [`MANUAL_TESTING.md`](./MANUAL_TESTING.md)
 
+## Spectator Dashboard (macOS)
+- Open `PokerArenaDisplay/PokerArenaDisplay.xcodeproj` in Xcode 15+ and run the `PokerArenaDisplay` target.
+- Enter the host WebSocket URL (defaults to `ws://127.0.0.1:8765/ws`) and click **Connect**. The app connects in spectator mode (`{"type":"hello","role":"spectator"}`) and renders the live table with chip stacks, community cards, and action ticker.
+- The dashboard listens for `event`, `start_hand`, `end_hand`, `spectator_snapshot`, and `admin` frames to stay synchronized.
+- When a bot stalls, press **Force Skip** in the control panel. The host applies the same fallback action as a timeout (check → call → fold) and broadcasts a notice so bots can recover gracefully.
+- To give teams unlimited thinking time, launch the host with `--manual-control` (or `--move-time 0`). Timers are disabled and only manual skips advance the hand.
+- For a paced viewing experience, launch the host with `--presentation` (optionally tweak `--presentation-delay-ms`). Spectator clients that request `mode="presentation"` receive the buffered, animated feed while bots keep playing in real time.
+
 ## Project Layout
 ```
 host/                # Engine, card primitives, WebSocket host

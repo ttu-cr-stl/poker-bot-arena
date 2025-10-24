@@ -16,6 +16,8 @@ from host.server import HostServer
 
 LOGGER = logging.getLogger("bot_stress")
 
+# Runs the host plus a few dumb bots so we can stress test long sessions.
+
 
 # ---------------------------------------------------------------------------
 # Bot strategies
@@ -160,7 +162,7 @@ async def run_simulation(args: argparse.Namespace) -> None:
         bb=args.bb,
         move_time_ms=args.move_time_ms,
     )
-    server = HostServer(config)
+    server = HostServer(config, presentation_mode=False)
 
     url = f"ws://{args.host}:{args.port}/ws"
     stop_event = asyncio.Event()

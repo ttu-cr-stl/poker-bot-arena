@@ -10,9 +10,13 @@ from .cards import Card, build_deck, deal
 from .evaluator import evaluate_best, parse_cards
 from .models import ActionType, Phase, PlayerSeat, TableConfig
 
+# GameEngine keeps all table state in memory. No networking lives here—only
+# poker rules, chip accounting, and betting order.
+
 
 @dataclass
 class HandContext:
+    # All mutable info about the current hand (deck, pot, actor queue, etc.).
     hand_id: str
     seed: int
     button: int
@@ -60,6 +64,7 @@ class GameEngine:
         self.hand: Optional[HandContext] = None
 
     # Seat management -------------------------------------------------
+
     def assign_seat(self, team: str, join_code: str) -> PlayerSeat:
         existing = self._find_seat_by_team(team)
         if existing:
@@ -235,6 +240,7 @@ class GameEngine:
         if seat is None or seat.has_folded:
             raise RuntimeError("Seat not active")
 
+        # Return every legal move plus helper numbers (amount to call, min/max raise).
         legal: List[ActionType] = [ActionType.FOLD]
         call_amount = ctx.current_bet - seat.committed
         if call_amount <= 0:
@@ -269,6 +275,7 @@ class GameEngine:
 
         events: List[Dict[str, object]] = []
 
+        # Each branch records what happened so the server can broadcast it.
         if action == ActionType.FOLD:
             seat.has_folded = True
             ctx.pending_callers.discard(seat_idx)
@@ -575,6 +582,70 @@ class GameEngine:
                 if seat is not None
             ],
         }
+
+    def spectator_snapshot(self) -> Dict[str, object]:
+        snapshot: Dict[str, object] = {
+            "config": {
+                "variant": self.config.variant,
+                "seats": self.config.seats,
+                "sb": self.config.sb,
+                "bb": self.config.bb,
+            },
+            "lobby": self.lobby_state(),
+            "timestamp": time.time(),
+        }
+
+        if not self.hand:
+            snapshot["hand"] = None
+            return snapshot
+
+        ctx = self.hand
+        acting_seat = self.next_actor()
+        community = [card.label for card in ctx.community]
+        side_pots = [value for value, contenders in self._build_side_pots() if value > 0 and contenders]
+
+        seats: List[Dict[str, object]] = []
+        for seat_idx, seat in enumerate(self.seats):
+            if seat is None:
+                continue
+
+            if seat.stack == 0 and ctx.pot == 0 and seat.total_in_pot == 0:
+                status = "BUSTED"
+            elif seat.has_folded:
+                status = "FOLDED"
+            elif not seat.connected:
+                status = "DISCONNECTED"
+            else:
+                status = "ACTIVE"
+
+            seats.append(
+                {
+                    "seat": seat_idx,
+                    "team": seat.team,
+                    "stack": seat.stack,
+                    "committed": seat.committed,
+                    "total_in_pot": seat.total_in_pot,
+                    "has_folded": seat.has_folded,
+                    "status": status,
+                    "connected": seat.connected,
+                    "is_button": seat_idx == ctx.button,
+                    "is_acting": acting_seat == seat_idx,
+                }
+            )
+
+        snapshot["hand"] = {
+            "hand_id": ctx.hand_id,
+            "phase": ctx.phase.value,
+            "button": ctx.button,
+            "acting_seat": acting_seat,
+            "current_bet": ctx.current_bet,
+            "min_raise_increment": ctx.min_raise_increment,
+            "pot": ctx.pot,
+            "side_pots": side_pots,
+            "community": community,
+            "seats": seats,
+        }
+        return snapshot
     def _resolve_showdown(self, ctx: HandContext) -> List[Dict[str, object]]:
         events: List[Dict[str, object]] = []
         board = list(ctx.community)

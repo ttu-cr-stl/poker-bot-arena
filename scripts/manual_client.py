@@ -15,6 +15,8 @@ from websockets import WebSocketClientProtocol
 
 logging.basicConfig(level=logging.INFO)
 
+# ManualClient mirrors what a bot does but with terminal prompts.
+
 
 @dataclass
 class ActContext:

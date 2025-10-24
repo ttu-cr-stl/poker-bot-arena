@@ -21,6 +21,10 @@
 
 ## Identity & Seating
 - Client must send `hello` with unique `team` plus `join_code`.
+- Spectators send `{"type":"hello","role":"spectator"}`. Optional `mode` values:
+  - `"live"` (default): receive events as they occur.
+  - `"presentation"`: receive events paced by the host's presentation delay. When the server starts with `--presentation`, spectators default to this mode unless they explicitly request `"live"`.
+- Spectators may send `{"type":"hello","v":1,"role":"spectator"}` to join read-only mode (no seat assigned). Spectators receive the same broadcast events plus periodic `spectator_snapshot` updates.
 - `(team, join_code)` locks a seat. Reconnecting with same credentials replaces the old connection.
 - Server broadcasts `lobby` on joins/disconnects.
 
@@ -34,13 +38,18 @@
 
 ## Timing & Auto-Actions
 - Timer starts when `act` is sent; duration `you.time_ms` (default `move_time_ms`).
-- On expiry: prefer `CHECK` if legal; else `CALL`; else `FOLD`.
+- If `move_time_ms` is `0`, the host never starts an automatic timeout. A tournament operator (spectator client) must explicitly advance play via the manual skip control when a bot becomes unresponsive.
+- When a timeout or manual skip fires, the host prefers `CHECK` if legal; else `CALL`; else `FOLD`.
 - Duplicate or late `action` messages ignored.
 
 ## Client → Server Messages
 ### `hello`
 ```json
 {"type":"hello","v":1,"team":"Alpha","join_code":"KF7Q9C"}
+```
+Spectator handshake example:
+```json
+{"type":"hello","v":1,"role":"spectator","mode":"presentation"}
 ```
 Errors: `BAD_SCHEMA`, `TEAM_TAKEN`, `TEAM_UNKNOWN`.
 
@@ -51,6 +60,13 @@ Errors: `BAD_SCHEMA`, `TEAM_TAKEN`, `TEAM_UNKNOWN`.
 - `action` ∈ {`FOLD`,`CHECK`,`CALL`,`RAISE_TO`}.
 - `amount` required for `RAISE_TO`.
 Errors: `INVALID_ACTION`, `OUT_OF_TURN`, `ACTION_TOO_LATE`, `BAD_SCHEMA`.
+
+### `skip` (spectator manual override)
+Sent by an authorized spectator/admin connection to advance the hand when a bot stalls. The host applies the same fallback logic as timeouts (prefers check → call → fold) to the current seat.
+
+```json
+{"type":"skip","v":1}
+```
 
 ## Server → Client Messages
 ### `welcome`
@@ -138,6 +154,56 @@ Example:
 }
 ```
 (legal/amount fields only included if `next_actor` equals snapshot recipient.)
+
+### `spectator_welcome`
+```json
+{
+  "type":"spectator_welcome","v":1,
+  "table_id":"T-1",
+  "config":{
+    "variant":"HUNL",
+    "seats":6,
+    "starting_stack":10000,
+    "sb":50,
+    "bb":100,
+    "move_time_ms":15000,
+    "presentation_mode":true,
+    "presentation_delay_ms":1200
+  }
+}
+```
+
+### `spectator_snapshot`
+```json
+{
+  "type":"spectator_snapshot","v":1,
+  "timestamp":1730064000.123,
+  "config":{"variant":"HUNL","seats":6,"sb":50,"bb":100},
+  "lobby":{"players":[{"seat":0,"team":"Alpha","connected":true,"stack":9850},...]},
+  "hand":{
+    "hand_id":"H-2025-10-17-00123",
+    "phase":"TURN",
+    "button":2,
+    "acting_seat":4,
+    "current_bet":600,
+    "min_raise_increment":600,
+    "pot":4200,
+    "side_pots":[800],
+    "community":["7h","2d","Qs","9c"],
+    "seats":[
+      {"seat":0,"team":"Alpha","stack":9850,"committed":600,"total_in_pot":1200,"status":"ACTIVE","connected":true,"is_button":false,"is_acting":false}
+    ]
+  }
+}
+```
+`hand` is `null` when no hand is running (e.g., between deals). `status` ∈ {`ACTIVE`,`FOLDED`,`BUSTED`,`DISCONNECTED`}.
+
+### `admin`
+Out-of-band informational frames (currently used to announce manual skip interventions):
+
+```json
+{"type":"admin","v":1,"event":"SKIP","seat":3}
+```
 
 ### `match_end`
 ```json
