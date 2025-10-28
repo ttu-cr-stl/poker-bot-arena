@@ -10,6 +10,16 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.4.2"]
 
+[project.scripts]
+tournament-host = "tournament.__main__:main"
+practice-server = "practice.server:main"
+sample-bot = "sample_bot:main"
+tourney-sim = "scripts.tourney_sim:main"
+
+[tool.setuptools]
+packages = ["core", "tournament", "practice", "scripts"]
+py-modules = ["sample_bot"]
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"

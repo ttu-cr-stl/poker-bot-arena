@@ -11,8 +11,8 @@ from typing import Dict, Optional
 import websockets
 from websockets.server import WebSocketServerProtocol
 
-from .game import GameEngine
-from .models import ActionType, TableConfig
+from core.game import GameEngine
+from core.models import ActionType, TableConfig
 
 LOGGER = logging.getLogger("poker_host")
 
@@ -103,6 +103,12 @@ class HostServer:
         self.sessions[seat.seat] = session
         async with self.lock:
             self.engine.set_connected(seat.seat, True)
+        LOGGER.info(
+            "Seat %s claimed by %s (stack=%s)",
+            seat.seat,
+            team,
+            seat.stack,
+        )
 
         await self._send_json(websocket, "welcome", {
             "table_id": "T-1",
@@ -145,9 +151,10 @@ class HostServer:
         finally:
             async with self.lock:
                 self.engine.set_connected(seat.seat, False)
-            self.sessions.pop(seat.seat, None)
-            await self._broadcast("lobby", self.engine.lobby_state(), include_presentation=True)
-            await self._broadcast_spectator_snapshot()
+        self.sessions.pop(seat.seat, None)
+        LOGGER.info("Seat %s (%s) disconnected", seat.seat, team)
+        await self._broadcast("lobby", self.engine.lobby_state(), include_presentation=True)
+        await self._broadcast_spectator_snapshot()
 
     async def _handle_spectator(self, websocket: WebSocketServerProtocol, hello: Dict[str, object]) -> None:
         raw_mode = hello.get("mode")
@@ -157,6 +164,7 @@ class HostServer:
             mode = "presentation" if self.presentation_enabled else "live"
         if mode not in {"live", "presentation"}:
             mode = "live"
+        LOGGER.info("Spectator connected (%s mode)", mode)
 
         async with self.lock:
             if mode == "presentation":
@@ -198,6 +206,7 @@ class HostServer:
         finally:
             async with self.lock:
                 self._remove_spectator(websocket)
+        LOGGER.info("Spectator disconnected (%s mode)", mode)
 
     async def _maybe_start_hand(self) -> None:
         async with self.lock:
@@ -267,8 +276,23 @@ class HostServer:
             try:
                 events = self.engine.apply_action(session.seat, action, amount)
             except ValueError as exc:
+                LOGGER.warning(
+                    "Rejected action seat=%s action=%s amount=%s reason=%s",
+                    session.seat,
+                    action,
+                    amount,
+                    exc,
+                )
                 await self._send_error(session.websocket, code="INVALID_ACTION", msg=str(exc))
                 return
+
+        LOGGER.debug(
+            "Applied action hand=%s seat=%s action=%s amount=%s",
+            self.engine.hand.hand_id if self.engine.hand else None,
+            session.seat,
+            action,
+            amount,
+        )
 
         await self._broadcast_events(events)
         await self._prompt_next_actor()
@@ -278,12 +302,18 @@ class HostServer:
             return
         end_payload = self.engine.end_hand_payload()
         await self._broadcast("end_hand", end_payload, include_presentation=True)
+        LOGGER.info(
+            "Hand %s finished; stacks=%s",
+            end_payload["hand_id"],
+            end_payload["stacks"],
+        )
 
         match_over = self.engine.is_match_over()
         if match_over:
             await self._broadcast("match_end", self.engine.match_result_payload(), include_presentation=True)
             self.engine.hand = None
             await self._broadcast_spectator_snapshot()
+            LOGGER.info("Match over: %s", self.engine.match_result_payload().get("winner"))
             return
 
         self.engine.hand = None
@@ -311,6 +341,7 @@ class HostServer:
                 return
             events = self._apply_fallback_locked(seat_idx)
             self.pending_action = None
+        LOGGER.info("Timer expired; forcing action for seat %s", seat_idx)
         await self._broadcast_events(events)
         await self._prompt_next_actor()
 
@@ -383,7 +414,7 @@ class HostServer:
                 self.pending_action.timer_task.cancel()
                 self.pending_action = None
             events = self._apply_fallback_locked(seat_idx)
-        # Let everyone know a human forced the action forward.
+        LOGGER.info("Manual skip applied to seat %s", seat_idx)
         await self._broadcast("admin", {"event": "SKIP", "seat": seat_idx}, include_presentation=True)
         await self._broadcast_events(events)
         await self._prompt_next_actor()

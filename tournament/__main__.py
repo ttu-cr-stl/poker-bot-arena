@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import logging
 
-from .models import TableConfig
+from core.models import TableConfig
 from .server import HostServer
 
 logging.basicConfig(level=logging.INFO)

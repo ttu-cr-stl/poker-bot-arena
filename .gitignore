@@ -3,3 +3,16 @@
 /__pycache__/
 *.pyc
 /handouts/
+/dist/
+/build/
+.vscode/
+.idea/
+*.swp
+*.swo
+.pytest_cache/
+/spectator/PokerArenaDisplay.xcodeproj/xcuserdata/
+/spectator/PokerArenaDisplay.xcodeproj/project.xcworkspace/
+/spectator/PokerArenaDisplay.xcodeproj/project.xcworkspace/xcuserdata/
+**/xcuserdata/
+**/project.xcworkspace/
+*.egg-info/

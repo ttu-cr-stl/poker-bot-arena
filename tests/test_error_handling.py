@@ -1,7 +1,7 @@
 import pytest
 
-from host.cards import Card, deal
-from host.models import ActionType
+from core.cards import Card, deal
+from core.models import ActionType
 
 from .helpers import create_engine, start_hand
 

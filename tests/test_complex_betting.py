@@ -1,4 +1,4 @@
-from host.models import ActionType
+from core.models import ActionType
 
 from .helpers import create_engine, start_hand
 

@@ -4,9 +4,9 @@ import time
 
 import pytest
 
-from host.game import GameEngine
-from host.models import ActionType, Phase, TableConfig
-from host.server import ClientSession, HostServer, PendingAction
+from core.game import GameEngine
+from core.models import ActionType, Phase, TableConfig
+from tournament.server import ClientSession, HostServer, PendingAction
 
 
 # Fake sockets so we can exercise async paths without opening real connections.

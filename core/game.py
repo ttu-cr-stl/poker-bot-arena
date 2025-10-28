@@ -295,19 +295,25 @@ class GameEngine:
         elif action == ActionType.RAISE_TO:
             if amount is None:
                 raise ValueError("Raise requires amount")
+            max_raise_to = seat.stack + seat.committed
+            if amount > max_raise_to:
+                raise ValueError("Raise exceeds stack")
             if amount <= ctx.current_bet:
                 raise ValueError("Raise must exceed current bet")
             min_raise_to = ctx.current_bet + ctx.min_raise_increment
-            if amount < min_raise_to:
+            short_all_in = amount < min_raise_to
+            if short_all_in and amount != max_raise_to:
                 raise ValueError("Raise below minimum")
-            if amount > seat.stack + seat.committed:
-                raise ValueError("Raise exceeds stack")
+            if not short_all_in and amount < min_raise_to:
+                raise ValueError("Raise below minimum")
 
             additional = amount - seat.committed
             self._commit_chips(seat, additional, ctx)
-            ctx.min_raise_increment = amount - ctx.current_bet
+            previous_bet = ctx.current_bet
             ctx.current_bet = amount
-            ctx.last_raise_seat = seat_idx
+            if not short_all_in:
+                ctx.min_raise_increment = amount - previous_bet
+                ctx.last_raise_seat = seat_idx
             ctx.pending_callers = {
                 s
                 for s in self._active_seats()

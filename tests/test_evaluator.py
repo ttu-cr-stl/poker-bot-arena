@@ -1,7 +1,7 @@
 import pytest
 
-from host.cards import Card, build_deck
-from host.evaluator import evaluate_best, parse_cards
+from core.cards import Card, build_deck
+from core.evaluator import evaluate_best, parse_cards
 
 
 def test_evaluate_best_identifies_all_hand_categories():

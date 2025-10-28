@@ -1,66 +1,58 @@
 # Poker Bot Arena
 
-A single-table No-Limit Texas Hold'em arena for head-to-head or multiway bot competitions. The server runs locally, exposes a WebSocket wire protocol, and ships with a manual CLI client for human playtests.
+Welcome! This repo powers our campus Poker Bot Arena. The aim is to make it dead simple for new teams to build a WebSocket bot, scrimmage locally, and then battle on the tournament host.
 
-## Features
-- Authoritative host server with configurable seats, blinds, and decision timer
-- JSON protocol documented in [`TECHNICAL_SPEC.md`](./TECHNICAL_SPEC.md)
-- Deterministic RNG seeded per hand for replayability
-- Side-pot aware engine with snapshot/resume support
-- Manual CLI client (`scripts/manual_client.py`) for human-in-the-loop testing
-- Comprehensive unit tests covering betting edge cases and match lifecycle
+## Choose Your Path
+- **Student practice** → Start with the Quickstart below.
+- **Organizers/spectator display** → See the Organizer Notes.
+- **Engine deep dive** → Head to [`DOCS/architecture.md`](./DOCS/architecture.md).
 
-## Quick Start
-1. **Set up environment**
+## Quickstart (two terminals)
+1. **Set up Python**
    ```bash
-   uv venv
+   python3 -m venv .venv
    source .venv/bin/activate
-   uv pip install -e '.[dev]'
+   pip install -e '.[dev]'
    ```
-
-2. **Run the host**
+2. **Terminal #1 – practice server**
    ```bash
-   python -m host --host 127.0.0.1 --port 8765 \
-       --seats 4 --starting-stack 10000 --sb 50 --bb 100 --move-time 15000
+   python practice/server.py --host 127.0.0.1 --port 9876
    ```
-   Adjust parameters to taste (e.g., `--move-time 120000` for 2 minutes per decision).
-
-3. **Join from the manual client** (one terminal per seat):
+   This spins up a fresh heads-up table for each connecting bot vs our baseline “house” bot.
+3. **Terminal #2 – sample bot template**
    ```bash
-   python scripts/manual_client.py --team Alice --code A1B2C3
-   python scripts/manual_client.py --team Bob   --code B1C2D3
+   python sample_bot.py --team Demo --code DEMO --url ws://127.0.0.1:9876/ws
    ```
-   Use unique `(team, join_code)` pairs for each participant. Commands: press Enter for the suggested default, `h` for help, or enter `RAISE_TO` amounts when prompted.
+   Edit `choose_action` inside `sample_bot.py` to plug in your own strategy.
+4. **Want human vs. bot?**
+   ```bash
+   python scripts/manual_client.py --team Alice --code A1B2C3 --url ws://127.0.0.1:9876/ws
+   ```
+   Use `h` at the prompt for command hints.
 
-## Development
-- Run tests:
-  ```bash
-  python -m pytest
-  ```
-- View the technical wire protocol and engine behavior: [`TECHNICAL_SPEC.md`](./TECHNICAL_SPEC.md)
-- Manual playtest walkthrough: [`MANUAL_TESTING.md`](./MANUAL_TESTING.md)
+More tips live in [`practice/README.md`](./practice/README.md).
 
-## Spectator Dashboard (macOS)
-- Open `PokerArenaDisplay/PokerArenaDisplay.xcodeproj` in Xcode 15+ and run the `PokerArenaDisplay` target.
-- Enter the host WebSocket URL (defaults to `ws://127.0.0.1:8765/ws`) and click **Connect**. The app connects in spectator mode (`{"type":"hello","role":"spectator"}`) and renders the live table with chip stacks, community cards, and action ticker.
-- The dashboard listens for `event`, `start_hand`, `end_hand`, `spectator_snapshot`, and `admin` frames to stay synchronized.
-- When a bot stalls, press **Force Skip** in the control panel. The host applies the same fallback action as a timeout (check → call → fold) and broadcasts a notice so bots can recover gracefully.
-- To give teams unlimited thinking time, launch the host with `--manual-control` (or `--move-time 0`). Timers are disabled and only manual skips advance the hand.
-- For a paced viewing experience, launch the host with `--presentation` (optionally tweak `--presentation-delay-ms`). Spectator clients that request `mode="presentation"` receive the buffered, animated feed while bots keep playing in real time.
+## Organizer Notes
+- Tournament host (multi-seat tables, spectators, manual skips, presentation mode) lives under `tournament/`.
+- macOS spectator app source is under `spectator/`. Launch the host with `--presentation` for paced visuals and `--manual-control` when you need full operator control.
+- Need humans to play on the tournament host? `scripts/manual_client.py` works there too.
+- Run tests anytime with `python -m pytest`.
 
 ## Project Layout
 ```
-host/                # Engine, card primitives, WebSocket host
-scripts/manual_client.py  # Interactive CLI client
-tests/               # Engine regression suite
-TECHNICAL_SPEC.md    # Protocol and engine detail
-MANUAL_TESTING.md    # Human playtest guide
+DOCS/              # newcomer-friendly guides and architecture diagrams
+core/              # poker rules, cards, evaluators, data models
+tournament/        # network host that drives the official table
+practice/          # per-connection scrimmage server + sample bot
+scripts/           # manual client, stress tools
+spectator/         # SwiftUI spectator display
+tests/             # regression suite
+TECHNICAL_SPEC.md  # protocol reference
 ```
 
-## Roadmap Ideas
-- Web UI for spectators/scoreboard
-- NDJSON replay logging + replay viewer
-- Sample bot SDKs (Python/TypeScript)
+## Learn More
+- [`DOCS/quickstart.md`](./DOCS/quickstart.md) – a longer student onboarding guide.
+- [`DOCS/bot_checklist.md`](./DOCS/bot_checklist.md) – must-haves before the tournament.
+- [`TECHNICAL_SPEC.md`](./TECHNICAL_SPEC.md) – full JSON wire protocol for both tournament and practice hosts.
 
-## License
-Specify your chosen license here.
+Good luck building your bot!

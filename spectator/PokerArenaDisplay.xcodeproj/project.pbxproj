@@ -60,9 +60,6 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				705B904D2EA9AC1500E83AF4 /* PokerArenaDisplay */,
-			);
 			name = PokerArenaDisplay;
 			packageProductDependencies = (
 			);

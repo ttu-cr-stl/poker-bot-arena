@@ -2,9 +2,9 @@ import itertools
 
 import pytest
 
-from host.cards import Card, RANKS, SUITS
-from host.game import GameEngine
-from host.models import ActionType, TableConfig
+from core.cards import Card, RANKS, SUITS
+from core.game import GameEngine
+from core.models import ActionType, TableConfig
 
 
 def setup_engine(seed: int = 42) -> tuple[GameEngine, list[int]]:
@@ -143,7 +143,7 @@ def test_split_pot_results_in_equal_awards(monkeypatch):
             if (rank, suit) not in used:
                 custom_cards.append(Card(rank, suit))
 
-    monkeypatch.setattr("host.game.build_deck", lambda seed=None: list(custom_cards))
+    monkeypatch.setattr("core.game.build_deck", lambda seed=None: list(custom_cards))
 
     ctx = engine.start_hand()
     assert ctx is not None
@@ -264,14 +264,14 @@ def test_multiway_split_returns_equal_shares(monkeypatch):
         engine.assign_seat(name, name)
 
     # Build deck to force everyone to same straight
-    from host.cards import Card
+    from core.cards import Card
 
     deck = [
         Card("2", "h"), Card("2", "d"), Card("2", "c"),
         Card("3", "h"), Card("3", "d"), Card("3", "c"),
         Card("4", "s"), Card("5", "s"), Card("6", "s"), Card("7", "s"), Card("8", "s"),
     ]
-    monkeypatch.setattr("host.game.build_deck", lambda seed=None: list(deck))
+    monkeypatch.setattr("core.game.build_deck", lambda seed=None: list(deck))
 
     ctx = engine.start_hand()
     assert ctx is not None

@@ -1,1 +1,5 @@
-host
+core
+practice
+sample_bot
+scripts
+tournament

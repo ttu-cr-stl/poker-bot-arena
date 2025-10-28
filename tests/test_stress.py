@@ -1,7 +1,7 @@
 import pytest
 
-from host.game import GameEngine
-from host.models import ActionType, TableConfig
+from core.game import GameEngine
+from core.models import ActionType, TableConfig
 
 from .helpers import start_hand
 

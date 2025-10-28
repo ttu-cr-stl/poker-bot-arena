@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Iterable, Tuple
 
-from host.game import GameEngine, HandContext
-from host.models import ActionType, TableConfig
+from core.game import GameEngine, HandContext
+from core.models import ActionType, TableConfig
 
 
 def create_engine(
