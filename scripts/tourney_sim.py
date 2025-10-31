@@ -174,11 +174,7 @@ async def run_simulation(args: argparse.Namespace) -> None:
         move_time_ms=args.move_time,
     )
 
-    host = HostServer(
-        config,
-        presentation_mode=False,
-        presentation_delay_ms=1200,
-    )
+    host = HostServer(config)
 
     server_task = asyncio.create_task(host.start(args.host, args.port))
     await asyncio.sleep(0.5)  # give the socket time to bind

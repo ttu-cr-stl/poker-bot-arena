@@ -52,6 +52,20 @@ def test_start_hand_assigns_button_and_blinds():
     ]
 
 
+def test_heads_up_button_posts_small_blind_and_acts_first():
+    engine = GameEngine(TableConfig(seats=2, starting_stack=1000, sb=10, bb=20))
+    seat_btn = engine.assign_seat("Button", "BTN")
+    seat_bb = engine.assign_seat("BigBlind", "BB")
+    ctx = engine.start_hand(seed=123)
+    assert ctx is not None
+    assert ctx.button == seat_btn.seat
+    pre_events = engine.consume_pre_events()
+    assert pre_events[0]["sb_seat"] == seat_btn.seat
+    assert pre_events[0]["bb_seat"] == seat_bb.seat
+    first_actor = engine.next_actor()
+    assert first_actor == seat_btn.seat
+
+
 def test_action_payload_has_flat_legal_fields():
     engine, _ = setup_engine()
     seat = engine.next_actor()
@@ -59,6 +73,9 @@ def test_action_payload_has_flat_legal_fields():
     assert payload["legal"] == ["FOLD", "CALL", "RAISE_TO"]
     assert payload["call_amount"] == engine.hand.current_bet - engine.seats[seat].committed
     assert "min_raise_to" in payload and "max_raise_to" in payload
+    assert payload["pot"] == engine.config.sb + engine.config.bb
+    assert payload["current_bet"] == engine.config.bb
+    assert payload["min_raise_increment"] == engine.config.bb
 
 
 def test_raise_updates_pot_and_pending_callers():

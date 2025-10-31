@@ -148,8 +148,17 @@ class GameEngine:
                 seat.hole_cards.append(card.label)
 
     def _post_blinds(self, ctx: HandContext) -> None:
-        sb_seat = self._next_active_seat(ctx.button)
-        bb_seat = self._next_active_seat(sb_seat)
+        active = [seat for seat in self.seats if seat and seat.stack > 0]
+        if len(active) < 2:
+            raise RuntimeError("Not enough active seats for blinds")
+
+        heads_up = len(active) == 2
+        if heads_up:
+            sb_seat = ctx.button
+            bb_seat = self._next_active_seat(ctx.button)
+        else:
+            sb_seat = self._next_active_seat(ctx.button)
+            bb_seat = self._next_active_seat(sb_seat)
         sb_player = self.seats[sb_seat]
         bb_player = self.seats[bb_seat]
         assert sb_player and bb_player
@@ -178,7 +187,12 @@ class GameEngine:
         ctx.pending_callers.update(actionable)
 
         if preflop:
-            start_seat = self._next_active_seat(ctx.last_raise_seat)  # seat after big blind
+            active = [seat for seat in self.seats if seat and seat.stack > 0]
+            heads_up = len(active) == 2
+            if heads_up and self.button is not None:
+                start_seat = self.button
+            else:
+                start_seat = self._next_active_seat(ctx.last_raise_seat)  # seat after big blind
         else:
             start_seat = self._next_active_seat(ctx.button)
             ctx.current_bet = 0
@@ -485,9 +499,13 @@ class GameEngine:
             "hand_id": ctx.hand_id,
             "seat": seat_idx,
             "phase": ctx.phase.value,
+            "pot": ctx.pot,
+            "current_bet": ctx.current_bet,
+            "min_raise_increment": ctx.min_raise_increment,
             "you": {
                 "hole": list(seat.hole_cards),
                 "stack": seat.stack,
+                "committed": seat.committed,
                 "to_call": to_call,
                 "time_ms": self.config.move_time_ms,
             },
@@ -589,69 +607,6 @@ class GameEngine:
             ],
         }
 
-    def spectator_snapshot(self) -> Dict[str, object]:
-        snapshot: Dict[str, object] = {
-            "config": {
-                "variant": self.config.variant,
-                "seats": self.config.seats,
-                "sb": self.config.sb,
-                "bb": self.config.bb,
-            },
-            "lobby": self.lobby_state(),
-            "timestamp": time.time(),
-        }
-
-        if not self.hand:
-            snapshot["hand"] = None
-            return snapshot
-
-        ctx = self.hand
-        acting_seat = self.next_actor()
-        community = [card.label for card in ctx.community]
-        side_pots = [value for value, contenders in self._build_side_pots() if value > 0 and contenders]
-
-        seats: List[Dict[str, object]] = []
-        for seat_idx, seat in enumerate(self.seats):
-            if seat is None:
-                continue
-
-            if seat.stack == 0 and ctx.pot == 0 and seat.total_in_pot == 0:
-                status = "BUSTED"
-            elif seat.has_folded:
-                status = "FOLDED"
-            elif not seat.connected:
-                status = "DISCONNECTED"
-            else:
-                status = "ACTIVE"
-
-            seats.append(
-                {
-                    "seat": seat_idx,
-                    "team": seat.team,
-                    "stack": seat.stack,
-                    "committed": seat.committed,
-                    "total_in_pot": seat.total_in_pot,
-                    "has_folded": seat.has_folded,
-                    "status": status,
-                    "connected": seat.connected,
-                    "is_button": seat_idx == ctx.button,
-                    "is_acting": acting_seat == seat_idx,
-                }
-            )
-
-        snapshot["hand"] = {
-            "hand_id": ctx.hand_id,
-            "phase": ctx.phase.value,
-            "button": ctx.button,
-            "acting_seat": acting_seat,
-            "current_bet": ctx.current_bet,
-            "min_raise_increment": ctx.min_raise_increment,
-            "pot": ctx.pot,
-            "side_pots": side_pots,
-            "community": community,
-            "seats": seats,
-        }
-        return snapshot
     def _resolve_showdown(self, ctx: HandContext) -> List[Dict[str, object]]:
         events: List[Dict[str, object]] = []
         board = list(ctx.community)

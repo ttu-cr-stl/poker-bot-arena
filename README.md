@@ -13,9 +13,8 @@ Welcome! This project walks you from “I just opened the repo” to “my bot i
 ```
 core/         Card shuffling, hand evaluation, betting rules (no networking)
 practice/     Mini server for 1‑on‑1 practice vs our “house” bot
-tournament/   Real tournament server (many seats, spectators, timers)
+tournament/   Real tournament server (many seats, timers)
 scripts/      Extra tools: manual client, stress scripts
-spectator/    macOS app used for the stage display (optional for teams)
 tests/        Automated tests that keep the poker logic safe
 DOCS/         Supplemental guides (architecture, quickstart, checklist)
 sample_bot.py Example bot you can copy and edit
@@ -23,7 +22,7 @@ sample_bot.py Example bot you can copy and edit
 
 Key ideas:
 - **Practice server ⇔ your bot.** Every time you connect, you get a private heads-up game versus the house bot. Perfect for testing.
-- **Tournament host ⇔ the real event.** Same protocol as practice, but with many seats, move timers, and spectators.
+- **Tournament host ⇔ the real event.** Same protocol as practice, but with many seats and move timers.
 - **Clients speak JSON.** You send and receive simple JSON messages over WebSockets—no special libraries needed.
 
 ---
@@ -126,7 +125,7 @@ Work through this short checklist:
    ```
 3. Your logs should show `WELCOME` and the lobby information. If you get `TABLE_FULL`, alert staff.
 4. If you disconnect, reconnect with the same team/join code to reclaim your seat.
-5. Ignore spectators—only the `act` prompts and timers matter for you.
+5. Your logs only reflect `act` prompts and timer updates; nothing else can interfere with your seat.
 
 Organizers can pause the clock if needed, but you should plan on the normal timers being active.
 

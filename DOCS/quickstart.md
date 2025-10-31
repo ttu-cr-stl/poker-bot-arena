@@ -1,8 +1,12 @@
 # Student Quickstart
 
-Follow these steps if you want to build a poker bot from scratch and test it locally.
+Hi! This page is the fastest way to go from a fresh clone to a bot that can play hands. No prior poker software experience required.
 
-## 1. Clone & Install
+---
+
+## 1. Clone the repo and install tools
+
+Open a terminal and run:
 ```bash
 git clone <repo-url>
 cd poker-bot-arena
@@ -10,35 +14,63 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 ```
+The last command installs the WebSocket library and the test tools we use.
 
-## 2. Launch the Practice Server
-This gives every connecting bot its own heads-up match against our baseline house bot.
+---
+
+## 2. Start the practice server
+
+This server gives each connecting bot its own heads-up match against the built-in house bot.
 ```bash
 python practice/server.py --host 127.0.0.1 --port 9876
 ```
+Leave this terminal window running—you’ll play against it from another window.
 
-## 3. Run the Sample Bot Template
-Open a second terminal (activate the venv again) and run:
+---
+
+## 3. Run the sample bot
+
+Open a second terminal, activate the virtual environment again, and run:
 ```bash
+source .venv/bin/activate
 python sample_bot.py --team MyBot --code SECRET --url ws://127.0.0.1:9876/ws
 ```
-Edit `sample_bot.py` and replace `choose_action` with your strategy. The provided template responds to every `act` prompt with a simple plan and prints host events to the terminal. Keep the JSON handshake intact.
+You should see messages like `WELCOME`, `START_HAND`, and `act`. The bot already knows the protocol; you only need to change the decision logic in `choose_action`.
 
-## 4. Iterate Fast
-- Add logging inside `choose_action` so you can replay decisions.
-- Want to play a seat by hand? Use the manual client: `python scripts/manual_client.py --team Alice --code DEMO --url ws://127.0.0.1:9876/ws`.
-- Need longer matches? Modify `practice/server.py` to tweak stacks or blinds.
+---
 
-## 5. Graduate to the Tournament Host
-Once your bot survives practice:
+## 4. Try a hand yourself
+
+Want to click buttons and see the protocol in action? Use the manual client:
 ```bash
-python -m tournament --manual-control --presentation --presentation-delay-ms 1500
+python scripts/manual_client.py --team Alice --code DEMO --url ws://127.0.0.1:9876/ws
 ```
-Use the macOS spectator app (see [`spectator/README.md`](../spectator/README.md)) to control pacing and manual skips.
+Type `h` at the prompt to see what the legal moves mean. This uses the exact same messages your bot receives.
 
-## Pro Tips
-- Keep your bot stateless between hands; rely on host messages for the truth.
-- If you lose connection, reconnect with the same `(team, join_code)`.
-- Always respond to `act` quickly—even in practice we expect a move; the tournament host has manual overrides if you freeze.
+---
 
-Happy hacking!
+## 5. Iterate on your strategy
+
+- Add `print()` or logging inside `choose_action` so you can review why the bot made each move.
+- Keep your own notes on the hand id (`hand_id`), stack sizes, and community cards—those are all sent in the `act` payload.
+- If you lose connection, simply restart with the same `--team` and `--code`; the practice server and tournament host both recognize that pair and let you reclaim the seat.
+
+---
+
+## 6. When you’re ready, reach for the tournament host
+
+To rehearse the on-stage experience (timers plus manual override controls), start the tournament host:
+```bash
+python -m tournament --manual-control
+```
+`--manual-control` turns off automatic timeouts so an operator can force skips—handy during live events. Most teams stay on the practice server until their bot is stable, then run a few matches on the full host to double-check behaviour.
+
+---
+
+## Friendly reminders
+
+- Keep your bot stateless between hands; the host tells you everything you need.
+- Always reply to `act` quickly—the organizers expect it even during practice.
+- Store your join code somewhere safe. It’s how the host verifies you are your team.
+
+Happy hacking! If something feels unclear, reach out to the organizers or open an issue—we’re here to help.☴

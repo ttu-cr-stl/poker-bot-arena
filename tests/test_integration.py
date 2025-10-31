@@ -29,9 +29,7 @@ class DummyTask:
 
 def setup_server(num_players: int = 2, move_time_ms: int = 100) -> tuple[HostServer, list[ClientSession], list[DummyWebSocket]]:
     server = HostServer(
-        TableConfig(seats=num_players, starting_stack=200, sb=5, bb=10, move_time_ms=move_time_ms),
-        presentation_mode=False,
-        presentation_delay_ms=200,
+        TableConfig(seats=num_players, starting_stack=200, sb=5, bb=10, move_time_ms=move_time_ms)
     )
     sessions: list[ClientSession] = []
     sockets: list[DummyWebSocket] = []
@@ -164,37 +162,6 @@ def test_maybe_finish_hand_emits_match_end(monkeypatch):
     assert "end_hand" in types
     assert "match_end" in types
     assert server.engine.hand is None
-
-
-def test_spectator_snapshot_contains_hand_state():
-    engine = GameEngine(TableConfig(seats=4, starting_stack=1_000, sb=10, bb=20))
-    for idx in range(4):
-        engine.assign_seat(f"Team{idx}", f"CODE{idx}")
-    ctx = engine.start_hand(seed=123)
-
-    snapshot = engine.spectator_snapshot()
-    assert snapshot["hand"]["hand_id"] == ctx.hand_id
-    seats = snapshot["hand"]["seats"]
-    assert isinstance(seats, list)
-    assert len(seats) == 4
-    assert snapshot["config"]["sb"] == 10
-    assert snapshot["hand"]["phase"] == "PRE_FLOP"
-
-
-def test_broadcast_spectator_snapshot_sends_payload():
-    server, _, _ = setup_server()
-    spectator = DummyWebSocket()
-
-    async def run():
-        async with server.lock:
-            server.live_spectators.add(spectator)
-        await server._broadcast_spectator_snapshot()
-
-    asyncio.run(run())
-
-    assert spectator.sent, "Expected spectator to receive snapshot payload"
-    payload = json.loads(spectator.sent[-1])
-    assert payload["type"] == "spectator_snapshot"
 
 
 def test_schedule_timer_disabled_when_move_time_zero():

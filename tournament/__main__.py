@@ -28,17 +28,6 @@ def main() -> None:
         action="store_true",
         help="Enable manual timeout control (equivalent to --move-time 0)",
     )
-    parser.add_argument(
-        "--presentation",
-        action="store_true",
-        help="Enable paced presentation stream for spectators (can combine with --presentation-delay-ms)",
-    )
-    parser.add_argument(
-        "--presentation-delay-ms",
-        type=int,
-        default=1200,
-        help="Delay between presentation events (milliseconds)",
-    )
     args = parser.parse_args()
 
     move_time = 0 if args.manual_control else args.move_time
@@ -51,11 +40,7 @@ def main() -> None:
         move_time_ms=move_time,
     )
 
-    server = HostServer(
-        config,
-        presentation_mode=args.presentation,
-        presentation_delay_ms=args.presentation_delay_ms,
-    )
+    server = HostServer(config)
     asyncio.run(server.start(host=args.host, port=args.port))
 
 

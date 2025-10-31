@@ -1,31 +1,39 @@
 # Bot Submission Checklist
 
-Before match day, make sure your bot handles the following:
+Use this page as your quick “Did we cover everything?” before you hand in your bot.
 
-## Protocol Basics
-- [ ] Send `hello` immediately after connecting (`team`, `join_code`).
-- [ ] Listen for `act` messages and always respond with `action` within the allowed time.
-- [ ] Handle `event`, `end_hand`, `match_end`, and `error` messages gracefully (log them, update state as needed).
-- [ ] If disconnected, reconnect using the same credentials and resume play when you receive a `snapshot`.
+---
 
-## Decision Loop
-- [ ] `choose_action` covers every legal move (fold/check/call/raise).
-- [ ] You always pull `call_amount`, `min_raise_to`, and `max_raise_to` directly from the `act` payload—never guess.
-- [ ] You clamp raises so they stay within the min/max range and only send integers.
-- [ ] You can recover from unexpected data by defaulting to a safe action (usually fold).
+## 1. Basic protocol
+- [ ] First message after connecting is `hello` with both `team` and `join_code`.
+- [ ] You can read `act` prompts and reply with `action` within the time limit.
+- [ ] You handle `event`, `end_hand`, `match_end`, and `error` messages without crashing.
+- [ ] If you disconnect, restarting with the same team/join code reclaims your seat.
 
-## Logging & Debugging
-- [ ] Print helpful logs for each decision (hand id, cards, action chosen) so you can replay issues.
-- [ ] Store logs locally; the host logs minimal info to keep matches fair.
+## 2. Making decisions
+- [ ] Your bot can send any legal move (`FOLD`, `CHECK`, `CALL`, `RAISE_TO`).
+- [ ] You use the numbers provided in each `act` payload (`call_amount`, `min_raise_to`, `max_raise_to`, `pot`, `current_bet`, `min_raise_increment`, and your own `committed` chips).
+- [ ] Raises are clamped so they stay inside the allowed range and are integers.
+- [ ] If something unexpected happens, you fall back to a safe action (usually fold).
 
-## Testing
-- [ ] Run against the practice server (`practice/server.py`) and verify multiple hands play out.
-- [ ] Try the manual client to simulate weird inputs.
-- [ ] Run the stress script (`scripts/bot_stress.py`) with your bot swapped in to ensure it survives long sessions.
+## 3. Logging
+- [ ] You log the hand id, cards, and chosen action so you can replay decisions.
+- [ ] Logs are saved on your device (the host keeps minimal logs).
 
-## Nice-to-haves
-- [ ] Support a `--url` flag so you can point your bot at different hosts easily.
-- [ ] Expose a dry-run mode where decisions are logged but not sent (handy for debugging).
-- [ ] Handle command-line config for tuning (aggressiveness, thresholds).
+## 4. Testing
+- [ ] You’ve played several hands on the practice server (`practice/server.py`) with no errors.
+- [ ] You tried the manual client to understand the prompts.
+- [ ] You let your bot play a long session (hundreds of hands) without crashing or leaking resources.
+- [ ] You ran the automated tests:
+  ```bash
+  python -m pytest
+  ```
 
-On match day, bring your bot script, logs, and the ability to reconnect quickly. Good luck!
+## 5. Nice extras (optional but helpful)
+- [ ] Your bot accepts a `--url` flag so you can switch between practice and tournament hosts.
+- [ ] There’s a “dry run” mode that prints actions instead of sending them (good for debugging).
+- [ ] You support command-line flags for tuning strategy parameters.
+
+---
+
+Bring your bot script, your join code, and the ability to reconnect quickly. If every box is checked, you’re ready. Good luck out there!

@@ -16,7 +16,7 @@ from core.models import ActionType, TableConfig
 
 LOGGER = logging.getLogger("poker_host")
 
-# HostServer glues the poker engine to WebSocket clients (bots + spectators).
+# HostServer glues the poker engine to WebSocket clients (bots).
 # Every network concern lives here; the GameEngine stays pure.
 
 
@@ -39,22 +39,12 @@ class HostServer:
     def __init__(
         self,
         config: TableConfig,
-        presentation_mode: bool = False,
-        presentation_delay_ms: int = 1200,
     ) -> None:
         # GameEngine handles cards; this class handles sockets and pacing.
         self.engine = GameEngine(config)
         self.sessions: Dict[int, ClientSession] = {}
         self.pending_action: Optional[PendingAction] = None
         self.lock = asyncio.Lock()
-        # Live spectators mirror the action instantly; presentation ones get paced output.
-        self.live_spectators: set[WebSocketServerProtocol] = set()
-        self.presentation_spectators: set[WebSocketServerProtocol] = set()
-        self.presentation_enabled = presentation_mode
-        self.presentation_delay = max(presentation_delay_ms, 0) / 1000
-        # Queue feeds a background task that trickles events to presentation viewers.
-        self.presentation_queue: asyncio.Queue[Dict[str, object]] = asyncio.Queue()
-        self.presentation_task: Optional[asyncio.Task] = None
 
     async def start(self, host: str = "0.0.0.0", port: int = 8765) -> None:
         # websockets.serve keeps accepting clients until the process stops.
@@ -68,10 +58,6 @@ class HostServer:
         if hello is None or hello.get("type") != "hello":
             await self._send_error(websocket, code="BAD_HELLO", msg="Expected hello")
             await websocket.close()
-            return
-
-        if hello.get("role") == "spectator":
-            await self._handle_spectator(websocket, hello)
             return
 
         team = hello.get("team")
@@ -123,8 +109,7 @@ class HostServer:
             },
         })
 
-        await self._broadcast("lobby", self.engine.lobby_state(), include_presentation=True)
-        await self._broadcast_spectator_snapshot()
+        await self._broadcast("lobby", self.engine.lobby_state())
 
         snapshot_payload: Optional[Dict[str, object]] = None
         start_needed = False
@@ -153,60 +138,7 @@ class HostServer:
                 self.engine.set_connected(seat.seat, False)
         self.sessions.pop(seat.seat, None)
         LOGGER.info("Seat %s (%s) disconnected", seat.seat, team)
-        await self._broadcast("lobby", self.engine.lobby_state(), include_presentation=True)
-        await self._broadcast_spectator_snapshot()
-
-    async def _handle_spectator(self, websocket: WebSocketServerProtocol, hello: Dict[str, object]) -> None:
-        raw_mode = hello.get("mode")
-        if isinstance(raw_mode, str):
-            mode = raw_mode.lower()
-        else:
-            mode = "presentation" if self.presentation_enabled else "live"
-        if mode not in {"live", "presentation"}:
-            mode = "live"
-        LOGGER.info("Spectator connected (%s mode)", mode)
-
-        async with self.lock:
-            if mode == "presentation":
-                self.presentation_spectators.add(websocket)
-                if self.presentation_task is None:
-                    self.presentation_task = asyncio.create_task(self._presentation_loop())
-            else:
-                self.live_spectators.add(websocket)
-            snapshot = self.engine.spectator_snapshot()
-
-        await self._send_json(websocket, "spectator_welcome", {
-            "table_id": "T-1",
-            "config": {
-                "variant": self.engine.config.variant,
-                "seats": self.engine.config.seats,
-                "starting_stack": self.engine.config.starting_stack,
-                "sb": self.engine.config.sb,
-                "bb": self.engine.config.bb,
-                "move_time_ms": self.engine.config.move_time_ms,
-                "presentation_mode": mode == "presentation",
-                "presentation_delay_ms": int(self.presentation_delay * 1000) if mode == "presentation" else None,
-            },
-        })
-
-        try:
-            await websocket.send(self._envelope("spectator_snapshot", snapshot))
-        except websockets.ConnectionClosed:
-            async with self.lock:
-                self._remove_spectator(websocket)
-            return
-
-        try:
-            async for raw in websocket:
-                message = self._decode(raw)
-                if message.get("type") == "skip":
-                    await self._handle_skip_request()
-        except websockets.ConnectionClosed:
-            pass
-        finally:
-            async with self.lock:
-                self._remove_spectator(websocket)
-        LOGGER.info("Spectator disconnected (%s mode)", mode)
+        await self._broadcast("lobby", self.engine.lobby_state())
 
     async def _maybe_start_hand(self) -> None:
         async with self.lock:
@@ -216,12 +148,10 @@ class HostServer:
             start_payload = self.engine.start_hand_payload(ctx)
             pre_events = self.engine.consume_pre_events()
 
-        await self._broadcast("start_hand", start_payload, include_presentation=True)
+        await self._broadcast("start_hand", start_payload)
         for event in pre_events:
             await self._broadcast("event", event)
-            self._queue_presentation_event(event)
         await self._prompt_next_actor()
-        await self._broadcast_spectator_snapshot()
 
     async def _prompt_next_actor(self) -> None:
         hand_ready_to_finish = False
@@ -301,7 +231,7 @@ class HostServer:
         if not self.engine.is_hand_complete():
             return
         end_payload = self.engine.end_hand_payload()
-        await self._broadcast("end_hand", end_payload, include_presentation=True)
+        await self._broadcast("end_hand", end_payload)
         LOGGER.info(
             "Hand %s finished; stacks=%s",
             end_payload["hand_id"],
@@ -310,15 +240,13 @@ class HostServer:
 
         match_over = self.engine.is_match_over()
         if match_over:
-            await self._broadcast("match_end", self.engine.match_result_payload(), include_presentation=True)
+            await self._broadcast("match_end", self.engine.match_result_payload())
             self.engine.hand = None
-            await self._broadcast_spectator_snapshot()
             LOGGER.info("Match over: %s", self.engine.match_result_payload().get("winner"))
             return
 
         self.engine.hand = None
         await self._maybe_start_hand()
-        await self._broadcast_spectator_snapshot()
 
     async def _schedule_timer(self, seat_idx: int) -> None:
         if self.engine.config.move_time_ms <= 0:
@@ -362,14 +290,9 @@ class HostServer:
         self,
         msg_type: str,
         payload: Dict[str, object],
-        *,
-        include_presentation: bool = False,
     ) -> None:
         async with self.lock:
-            players = [session.websocket for session in self.sessions.values()]
-            live_targets = list(self.live_spectators)
-            presentation_targets = list(self.presentation_spectators) if include_presentation else []
-        targets = players + live_targets + presentation_targets
+            targets = [session.websocket for session in self.sessions.values()]
         if not targets:
             return
         message = self._envelope(msg_type, payload)
@@ -378,30 +301,6 @@ class HostServer:
     async def _broadcast_events(self, events):
         for event in events:
             await self._broadcast("event", event)
-            self._queue_presentation_event(event)
-        await self._broadcast_spectator_snapshot()
-
-    def _queue_presentation_event(self, event: Dict[str, object]) -> None:
-        if not self.presentation_spectators:
-            return
-        if self.presentation_task is None:
-            self.presentation_task = asyncio.create_task(self._presentation_loop())
-        self.presentation_queue.put_nowait(event)
-
-    async def _presentation_loop(self) -> None:
-        # Runs forever while there are presentation viewers listening.
-        while True:
-            event = await self.presentation_queue.get()
-            await asyncio.sleep(self.presentation_delay)
-            await self._send_presentation_event(event)
-
-    async def _send_presentation_event(self, event: Dict[str, object]) -> None:
-        async with self.lock:
-            spectators = list(self.presentation_spectators)
-        if not spectators:
-            return
-        message = self._envelope("event", event)
-        await asyncio.gather(*(spectator.send(message) for spectator in spectators), return_exceptions=True)
 
     async def _handle_skip_request(self) -> None:
         async with self.lock:
@@ -415,13 +314,9 @@ class HostServer:
                 self.pending_action = None
             events = self._apply_fallback_locked(seat_idx)
         LOGGER.info("Manual skip applied to seat %s", seat_idx)
-        await self._broadcast("admin", {"event": "SKIP", "seat": seat_idx}, include_presentation=True)
+        await self._broadcast("admin", {"event": "SKIP", "seat": seat_idx})
         await self._broadcast_events(events)
         await self._prompt_next_actor()
-
-    def _remove_spectator(self, websocket: WebSocketServerProtocol) -> None:
-        self.live_spectators.discard(websocket)
-        self.presentation_spectators.discard(websocket)
 
     async def _send_json(self, websocket: WebSocketServerProtocol, msg_type: str, payload: Dict[str, object]) -> None:
         try:
@@ -436,15 +331,6 @@ class HostServer:
         body = {"type": msg_type, "v": 1, "ts": datetime.now(timezone.utc).isoformat()}
         body.update(payload)
         return json.dumps(body)
-
-    async def _broadcast_spectator_snapshot(self) -> None:
-        async with self.lock:
-            if not (self.live_spectators or self.presentation_spectators):
-                return
-            snapshot = self.engine.spectator_snapshot()
-            spectators = list(self.live_spectators | self.presentation_spectators)
-        message = self._envelope("spectator_snapshot", snapshot)
-        await asyncio.gather(*(spectator.send(message) for spectator in spectators), return_exceptions=True)
 
     async def _read_message(self, websocket: WebSocketServerProtocol) -> Optional[Dict[str, object]]:
         try:
