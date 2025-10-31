@@ -9,10 +9,10 @@ from core.models import ActionType, TableConfig
 
 def setup_engine(seed: int = 42) -> tuple[GameEngine, list[int]]:
     engine = GameEngine(TableConfig(seats=4, starting_stack=1000, sb=10, bb=20))
-    engine.assign_seat("Alpha", "CODE1")
-    engine.assign_seat("Beta", "CODE2")
-    engine.assign_seat("Gamma", "CODE3")
-    engine.assign_seat("Delta", "CODE4")
+    engine.assign_seat("Alpha")
+    engine.assign_seat("Beta")
+    engine.assign_seat("Gamma")
+    engine.assign_seat("Delta")
     ctx = engine.start_hand(seed=seed)
     assert ctx is not None
     return engine, [seat.seat for seat in engine.seats if seat]
@@ -54,8 +54,8 @@ def test_start_hand_assigns_button_and_blinds():
 
 def test_heads_up_button_posts_small_blind_and_acts_first():
     engine = GameEngine(TableConfig(seats=2, starting_stack=1000, sb=10, bb=20))
-    seat_btn = engine.assign_seat("Button", "BTN")
-    seat_bb = engine.assign_seat("BigBlind", "BB")
+    seat_btn = engine.assign_seat("Button")
+    seat_bb = engine.assign_seat("BigBlind")
     ctx = engine.start_hand(seed=123)
     assert ctx is not None
     assert ctx.button == seat_btn.seat
@@ -128,8 +128,8 @@ def test_snapshot_includes_legal_when_actor():
 
 def test_match_result_payload_when_match_over():
     engine = GameEngine(TableConfig(seats=2, starting_stack=100))
-    seat_a = engine.assign_seat("Alpha", "CODE1")
-    seat_b = engine.assign_seat("Beta", "CODE2")
+    seat_a = engine.assign_seat("Alpha")
+    seat_b = engine.assign_seat("Beta")
     seat_b.stack = 0
     assert engine.is_match_over()
     payload = engine.match_result_payload()
@@ -140,8 +140,8 @@ def test_match_result_payload_when_match_over():
 
 def test_split_pot_results_in_equal_awards(monkeypatch):
     engine = GameEngine(TableConfig(seats=2, starting_stack=1000, sb=50, bb=100))
-    engine.assign_seat("Alpha", "CODE1")
-    engine.assign_seat("Beta", "CODE2")
+    engine.assign_seat("Alpha")
+    engine.assign_seat("Beta")
 
     used = []
     def card(rank, suit):
@@ -191,9 +191,9 @@ def test_split_pot_results_in_equal_awards(monkeypatch):
 
 def test_multiple_hands_rotate_button_and_reset_state():
     engine = GameEngine(TableConfig(seats=3, starting_stack=500, sb=10, bb=20))
-    engine.assign_seat("Alpha", "CODE1")
-    engine.assign_seat("Beta", "CODE2")
-    engine.assign_seat("Gamma", "CODE3")
+    engine.assign_seat("Alpha")
+    engine.assign_seat("Beta")
+    engine.assign_seat("Gamma")
 
     first_ctx = engine.start_hand(seed=10)
     assert first_ctx.button == 0
@@ -227,8 +227,8 @@ def test_multiple_hands_rotate_button_and_reset_state():
 
 def test_fold_immediately_ends_hand_without_extra_prompt():
     engine = GameEngine(TableConfig(seats=2, starting_stack=500, sb=10, bb=20))
-    engine.assign_seat("Alpha", "CODE1")
-    engine.assign_seat("Beta", "CODE2")
+    engine.assign_seat("Alpha")
+    engine.assign_seat("Beta")
     ctx = engine.start_hand(seed=5)
     assert ctx is not None
 
@@ -246,9 +246,9 @@ def test_fold_immediately_ends_hand_without_extra_prompt():
 
 def test_all_in_creates_side_pot_and_awards_correctly():
     engine = GameEngine(TableConfig(seats=3, starting_stack=500, sb=10, bb=20))
-    engine.assign_seat("A", "A")
-    engine.assign_seat("B", "B")
-    engine.assign_seat("C", "C")
+    engine.assign_seat("A")
+    engine.assign_seat("B")
+    engine.assign_seat("C")
     ctx = engine.start_hand(seed=15)
     assert ctx is not None
 
@@ -278,7 +278,7 @@ def test_all_in_creates_side_pot_and_awards_correctly():
 def test_multiway_split_returns_equal_shares(monkeypatch):
     engine = GameEngine(TableConfig(seats=3, starting_stack=1000, sb=10, bb=20))
     for name in ("A", "B", "C"):
-        engine.assign_seat(name, name)
+        engine.assign_seat(name)
 
     # Build deck to force everyone to same straight
     from core.cards import Card
@@ -310,8 +310,8 @@ def test_multiway_split_returns_equal_shares(monkeypatch):
 
 def test_min_raise_caps_when_stack_exact(monkeypatch):
     engine = GameEngine(TableConfig(seats=2, starting_stack=200, sb=10, bb=20))
-    engine.assign_seat("A", "A")
-    engine.assign_seat("B", "B")
+    engine.assign_seat("A")
+    engine.assign_seat("B")
     ctx = engine.start_hand(seed=123)
     assert ctx is not None
 
@@ -326,8 +326,8 @@ def test_min_raise_caps_when_stack_exact(monkeypatch):
 
 def test_zero_to_call_prefers_check():
     engine = GameEngine(TableConfig(seats=2, starting_stack=200, sb=10, bb=20))
-    engine.assign_seat("A", "A")
-    engine.assign_seat("B", "B")
+    engine.assign_seat("A")
+    engine.assign_seat("B")
     ctx = engine.start_hand(seed=33)
     assert ctx is not None
 
@@ -344,9 +344,9 @@ def test_zero_to_call_prefers_check():
 
 def test_fold_cascade_post_flop_finishes_hand():
     engine = GameEngine(TableConfig(seats=3, starting_stack=300, sb=10, bb=20))
-    engine.assign_seat("A", "A")
-    engine.assign_seat("B", "B")
-    engine.assign_seat("C", "C")
+    engine.assign_seat("A")
+    engine.assign_seat("B")
+    engine.assign_seat("C")
     ctx = engine.start_hand(seed=50)
     assert ctx is not None
 
@@ -371,8 +371,8 @@ def test_fold_cascade_post_flop_finishes_hand():
 
 def test_match_end_when_last_player_busts():
     engine = GameEngine(TableConfig(seats=2, starting_stack=100, sb=10, bb=20))
-    seat_a = engine.assign_seat("Alpha", "CODE1")
-    seat_b = engine.assign_seat("Beta", "CODE2")
+    seat_a = engine.assign_seat("Alpha")
+    seat_b = engine.assign_seat("Beta")
     seat_b.stack = 0
     assert engine.is_match_over()
     payload = engine.match_result_payload()
@@ -381,8 +381,8 @@ def test_match_end_when_last_player_busts():
 
 def test_snapshot_includes_values_when_actor():
     engine = GameEngine(TableConfig(seats=2, starting_stack=200, sb=10, bb=20))
-    engine.assign_seat("A", "A")
-    engine.assign_seat("B", "B")
+    engine.assign_seat("A")
+    engine.assign_seat("B")
     ctx = engine.start_hand(seed=44)
     assert ctx is not None
     actor = engine.next_actor()
@@ -395,8 +395,8 @@ def test_snapshot_includes_values_when_actor():
 
 def test_timer_fallback_prefers_check_then_call_then_fold():
     engine = GameEngine(TableConfig(seats=2, starting_stack=200, sb=10, bb=20, move_time_ms=1000))
-    engine.assign_seat("A", "A")
-    engine.assign_seat("B", "B")
+    engine.assign_seat("A")
+    engine.assign_seat("B")
     ctx = engine.start_hand(seed=60)
     assert ctx is not None
 

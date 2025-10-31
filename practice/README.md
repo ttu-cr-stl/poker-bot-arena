@@ -9,10 +9,10 @@ Everything in this folder helps teams rehearse locally without the full tourname
 
 ## Typical Workflow
 1. Start the practice server: `python practice/server.py --host 127.0.0.1 --port 9876`
-2. Run the sample bot in another terminal: `python sample_bot.py --team Demo --code DEMO --url ws://127.0.0.1:9876/ws`
+2. Run the sample bot in another terminal: `python sample_bot.py --team Demo --url ws://127.0.0.1:9876/ws`
 3. Tweak `choose_action` inside the sample bot, or point the practice server at your own bot script.
 
-> **Why the join code?**  
-> We want practice to feel exactly like tournament day. Each team has a join code—the same one the organizers give you for the real event. When you connect, the server only hands you a seat if both the team name and join code match. That protects you from typos and lets you safely reconnect after a laptop hiccup.
+> **Team names matter.**  
+> The host treats names case-insensitively (`RoboNerds` and `robonerds` collide), so agree on a single spelling with your teammates. Reusing the same name lets you reconnect instantly after a hiccup.
 
 Bots and practice server use the same JSON protocol as the real tournament host, so no changes are required when you switch on match day.

@@ -9,16 +9,16 @@ from .helpers import start_hand
 def test_table_capacity_limit_enforced():
     engine = GameEngine(TableConfig(seats=6))
     for idx in range(6):
-        seat = engine.assign_seat(f"Team{idx}", f"CODE{idx}")
+        seat = engine.assign_seat(f"Team{idx}")
         assert seat.seat == idx
     with pytest.raises(RuntimeError, match="Table is full"):
-        engine.assign_seat("Overflow", "CODEX")
+        engine.assign_seat("Overflow")
 
 
 def test_engine_handles_thousand_hands_round_robin():
     engine = GameEngine(TableConfig(seats=6, starting_stack=2_000, sb=5, bb=10))
     for idx in range(engine.config.seats):
-        engine.assign_seat(f"Stress{idx}", f"S{idx}")
+        engine.assign_seat(f"Stress{idx}")
 
     total_chips = sum(seat.stack for seat in engine.seats if seat)
     hands_played = 0

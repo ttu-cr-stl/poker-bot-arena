@@ -3,7 +3,7 @@
 Starter bot template for Poker Bot Arena teams.
 
 Usage:
-    python sample_bot.py --team MyBot --code SECRET --url ws://127.0.0.1:9876/ws
+    python sample_bot.py --team MyBot --url ws://127.0.0.1:9876/ws
 
 This script shows the core loop:
   * handshake with the host
@@ -348,14 +348,13 @@ async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: st
         LOGGER.debug("Ignoring message type=%s", msg_type)
 
 
-async def run_bot(team: str, join_code: str, url: str) -> None:
+async def run_bot(team: str, url: str) -> None:
     try:
         async with websockets.connect(url) as ws:
             hello = {
                 "type": "hello",
                 "v": 1,
                 "team": team,
-                "join_code": join_code,
             }
             await ws.send(json.dumps(hello))
             LOGGER.info("[connect] %s as %s", url, team)
@@ -372,7 +371,6 @@ async def run_bot(team: str, join_code: str, url: str) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sample Poker Bot client")
     parser.add_argument("--team", required=True, help="Team name registered with the host")
-    parser.add_argument("--code", required=True, help="Join code provided by organizers")
     parser.add_argument("--url", default="ws://127.0.0.1:9876/ws", help="WebSocket URL")
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
@@ -381,7 +379,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     LOGGER.setLevel(getattr(logging, args.log_level.upper(), logging.INFO))
-    asyncio.run(run_bot(args.team, args.code, args.url))
+    asyncio.run(run_bot(args.team, args.url))
 
 
 # ---------------------------------------------------------------------------

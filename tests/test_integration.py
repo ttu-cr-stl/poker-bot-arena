@@ -35,9 +35,9 @@ def setup_server(num_players: int = 2, move_time_ms: int = 100) -> tuple[HostSer
     sockets: list[DummyWebSocket] = []
 
     for idx in range(num_players):
-        seat = server.engine.assign_seat(f"Team{idx}", f"CODE{idx}")
+        seat = server.engine.assign_seat(f"Team{idx}")
         websocket = DummyWebSocket()
-        session = ClientSession(seat=seat.seat, team=seat.team, websocket=websocket, join_code=seat.join_code)
+        session = ClientSession(seat=seat.seat, team=seat.team, websocket=websocket)
         server.sessions[seat.seat] = session
         server.engine.set_connected(seat.seat, True)
         sessions.append(session)

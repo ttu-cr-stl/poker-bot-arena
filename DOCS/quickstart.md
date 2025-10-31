@@ -33,7 +33,7 @@ Leave this terminal window running—you’ll play against it from another windo
 Open a second terminal, activate the virtual environment again, and run:
 ```bash
 source .venv/bin/activate
-python sample_bot.py --team MyBot --code SECRET --url ws://127.0.0.1:9876/ws
+python sample_bot.py --team MyBot --url ws://127.0.0.1:9876/ws
 ```
 You should see messages like `WELCOME`, `START_HAND`, and `act`. The bot already knows the protocol; you only need to change the decision logic in `choose_action`.
 
@@ -43,7 +43,7 @@ You should see messages like `WELCOME`, `START_HAND`, and `act`. The bot already
 
 Want to click buttons and see the protocol in action? Use the manual client:
 ```bash
-python scripts/manual_client.py --team Alice --code DEMO --url ws://127.0.0.1:9876/ws
+python scripts/manual_client.py --team Alice --url ws://127.0.0.1:9876/ws
 ```
 Type `h` at the prompt to see what the legal moves mean. This uses the exact same messages your bot receives.
 
@@ -53,7 +53,7 @@ Type `h` at the prompt to see what the legal moves mean. This uses the exact sam
 
 - Add `print()` or logging inside `choose_action` so you can review why the bot made each move.
 - Keep your own notes on the hand id (`hand_id`), stack sizes, and community cards—those are all sent in the `act` payload.
-- If you lose connection, simply restart with the same `--team` and `--code`; the practice server and tournament host both recognize that pair and let you reclaim the seat.
+- If you lose connection, simply restart with the same `--team`; the practice server and tournament host both recognize the name (case-insensitive) and let you reclaim the seat.
 
 ---
 
@@ -71,6 +71,6 @@ python -m tournament --manual-control
 
 - Keep your bot stateless between hands; the host tells you everything you need.
 - Always reply to `act` quickly—the organizers expect it even during practice.
-- Store your join code somewhere safe. It’s how the host verifies you are your team.
+- Pick a team name and stick with it—connections are matched by name (case-insensitive).
 
 Happy hacking! If something feels unclear, reach out to the organizers or open an issue—we’re here to help.☴

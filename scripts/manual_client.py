@@ -50,9 +50,8 @@ class HandState:
 
 
 class ManualClient:
-    def __init__(self, team: str, join_code: str, url: str) -> None:
+    def __init__(self, team: str, url: str) -> None:
         self.team = team
-        self.join_code = join_code
         self.url = url
         self.websocket: Optional[WebSocketClientProtocol] = None
         self.last_act: Optional[ActContext] = None
@@ -68,7 +67,6 @@ class ManualClient:
                     "type": "hello",
                     "v": 1,
                     "team": self.team,
-                    "join_code": self.join_code,
                 }
             )
             await self._loop()
@@ -446,13 +444,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Poker Bot Arena manual client")
     parser.add_argument("--url", default="ws://127.0.0.1:9876/ws")
     parser.add_argument("--team", required=True)
-    parser.add_argument("--code", required=True, help="Join code")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str]) -> None:
     args = parse_args(argv)
-    client = ManualClient(team=args.team, join_code=args.code, url=args.url)
+    client = ManualClient(team=args.team, url=args.url)
     try:
         asyncio.run(client.run())
     except KeyboardInterrupt:

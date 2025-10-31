@@ -60,14 +60,14 @@ python practice/server.py --host 127.0.0.1 --port 9876
 
 **Terminal B** – run the sample bot:
 ```bash
-python sample_bot.py --team Demo --code DEMO --url ws://127.0.0.1:9876/ws
+python sample_bot.py --team Demo --url ws://127.0.0.1:9876/ws
 ```
 
 You’ll see `WELCOME`, `START_HAND`, and then `act` prompts. Edit the `choose_action` function and rerun to test new ideas. Seat 0 is always you; seat 1 is the house bot.
 
 Prefer playing manually? Use:
 ```bash
-python scripts/manual_client.py --team Alice --code A1B2C3 --url ws://127.0.0.1:9876/ws
+python scripts/manual_client.py --team Alice --url ws://127.0.0.1:9876/ws
 ```
 
 Press `h` at the prompt for help on available actions.
@@ -78,10 +78,10 @@ Press `h` at the prompt for help on available actions.
 
 1. **Copy the template** – duplicate `sample_bot.py`, rename it, and replace the logic inside `choose_action`.
 2. **Write your own client** – follow the same message flow as the template. The essentials:
-   - First message = `{"type": "hello", "v": 1, "team": "...", "join_code": "..."}`. Your join code is the password that proves who you are.
+   - First message = `{"type": "hello", "v": 1, "team": "..."}`. Team names are case-insensitive; `RoboNerds` and `robonerds` refer to the same seat.
    - Whenever you receive `type="act"`, reply quickly with `{"type": "action", "hand_id": "...", "action": "...", "amount": maybe}`. The default timer is 15 seconds.
    - Expect other messages (`event`, `start_hand`, `end_hand`, `match_end`, `error`) at any time.
-   - If your bot disconnects, reconnect with the same team name and join code to reclaim the seat.
+   - If your bot disconnects, reconnect with the same team name to reclaim the seat.
 
 Helpful facts:
 - In heads-up play the dealer posts the small blind and acts first pre-flop; after the flop, the other player acts first.
@@ -111,7 +111,7 @@ Work through this short checklist:
    ```
    Our tests cover the engine. They should pass before you submit updates.
 
-> **Keep your join code private.** It’s the password that proves you are your team. The host only gives you control of a seat when both team name and join code match.
+> **Pick a name and stick with it.** Connections are claimed by team name (case-insensitive), so using the same spelling every time avoids collisions.
 
 ---
 
@@ -121,10 +121,10 @@ Work through this short checklist:
 2. On your laptop:
    ```bash
    source .venv/bin/activate
-   python my_bot.py --team <TeamName> --code <JoinCode> --url ws://tournament-host:8765/ws
+   python my_bot.py --team <TeamName> --url ws://tournament-host:8765/ws
    ```
 3. Your logs should show `WELCOME` and the lobby information. If you get `TABLE_FULL`, alert staff.
-4. If you disconnect, reconnect with the same team/join code to reclaim your seat.
+4. If you disconnect, reconnect with the same team name to reclaim your seat.
 5. Your logs only reflect `act` prompts and timer updates; nothing else can interfere with your seat.
 
 Organizers can pause the clock if needed, but you should plan on the normal timers being active.

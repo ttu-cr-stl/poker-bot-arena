@@ -19,7 +19,7 @@ def create_engine(
         TableConfig(seats=seats, starting_stack=starting_stack, sb=sb, bb=bb, move_time_ms=move_time_ms)
     )
     for idx in range(seats):
-        engine.assign_seat(f"Player{idx}", f"CODE{idx}")
+        engine.assign_seat(f"Player{idx}")
     return engine
 
 

@@ -31,7 +31,6 @@ LOGGER = logging.getLogger("tourney_sim")
 @dataclass
 class BotProfile:
     name: str
-    join_code: str
     rng: random.Random
 
 
@@ -98,7 +97,6 @@ async def run_bot(profile: BotProfile, url: str, stop_event: asyncio.Event) -> N
                 "type": "hello",
                 "v": 1,
                 "team": profile.name,
-                "join_code": profile.join_code,
             }
             await ws.send(json.dumps(hello))
 
@@ -184,7 +182,6 @@ async def run_simulation(args: argparse.Namespace) -> None:
     profiles = [
         BotProfile(
             name=f"SimBot{i}",
-            join_code=f"CODE{i}",
             rng=random.Random(args.seed + i),
         )
         for i in range(args.players)

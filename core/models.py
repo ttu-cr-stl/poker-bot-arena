@@ -34,7 +34,7 @@ class TableConfig:
 class PlayerSeat:
     seat: int
     team: str
-    join_code: str
+    team_key: str
     stack: int
     connected: bool = False
     committed: int = 0

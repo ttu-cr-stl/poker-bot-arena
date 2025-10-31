@@ -65,25 +65,33 @@ class GameEngine:
 
     # Seat management -------------------------------------------------
 
-    def assign_seat(self, team: str, join_code: str) -> PlayerSeat:
-        existing = self._find_seat_by_team(team)
+    def assign_seat(self, team: str) -> PlayerSeat:
+        team_display = team.strip()
+        if not team_display:
+            raise ValueError("TEAM_REQUIRED")
+
+        team_key = self._normalize_team(team_display)
+        existing = self._find_seat_by_key(team_key)
         if existing:
-            if existing.join_code != join_code:
-                raise ValueError("JOIN_CODE_MISMATCH")
+            if existing.team != team_display:
+                existing.team = team_display
             return existing
 
         for idx in range(self.config.seats):
             seat = self.seats[idx]
             if seat is None:
-                seat = PlayerSeat(seat=idx, team=team, join_code=join_code, stack=self.config.starting_stack)
+                seat = PlayerSeat(seat=idx, team=team_display, team_key=team_key, stack=self.config.starting_stack)
                 self.seats[idx] = seat
                 return seat
 
         raise RuntimeError("Table is full")
 
-    def _find_seat_by_team(self, team: str) -> Optional[PlayerSeat]:
+    def _normalize_team(self, team: str) -> str:
+        return team.strip().casefold()
+
+    def _find_seat_by_key(self, team_key: str) -> Optional[PlayerSeat]:
         for seat in self.seats:
-            if seat and seat.team == team:
+            if seat and seat.team_key == team_key:
                 return seat
         return None
 

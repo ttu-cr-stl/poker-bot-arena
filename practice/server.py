@@ -26,14 +26,12 @@ class PracticeSession:
         websocket: websockets.WebSocketServerProtocol,
         config: TableConfig,
         remote_team: str = "REMOTE",
-        remote_code: str = "REMOTE",
     ) -> None:
         self.websocket = websocket
         self.engine = GameEngine(config)
         self.remote_seat: Optional[int] = None
         self.house_seat: Optional[int] = None
         self.remote_team = remote_team or "REMOTE"
-        self.remote_code = remote_code or "REMOTE"
 
     async def run(self) -> None:
         # One practice match = repeated heads-up hands until someone busts.
@@ -51,9 +49,9 @@ class PracticeSession:
 
     async def _assign_seats(self) -> None:
         # Reserve seat 0 for remote, seat 1 for house bot.
-        remote = self.engine.assign_seat(self.remote_team, self.remote_code)
+        remote = self.engine.assign_seat(self.remote_team)
         self.remote_seat = remote.seat
-        house = self.engine.assign_seat("HOUSE", "HOUSE")
+        house = self.engine.assign_seat("HOUSE")
         self.house_seat = house.seat
 
     async def _play_hand(self) -> None:
@@ -101,8 +99,10 @@ async def handle_connection(websocket: websockets.WebSocketServerProtocol, confi
     if hello.get("type") != "hello":
         await websocket.send(json.dumps({"type": "error", "code": "BAD_HELLO", "msg": "Expected hello"}))
         return
-    team = hello.get("team") or "REMOTE"
-    join_code = hello.get("join_code") or "REMOTE"
+    team_raw = hello.get("team")
+    team = team_raw.strip() if isinstance(team_raw, str) else "REMOTE"
+    if not team:
+        team = "REMOTE"
 
     await websocket.send(json.dumps({
         "type": "welcome",
@@ -118,7 +118,7 @@ async def handle_connection(websocket: websockets.WebSocketServerProtocol, confi
         },
     }))
 
-    session = PracticeSession(websocket, config, remote_team=team, remote_code=join_code)
+    session = PracticeSession(websocket, config, remote_team=team)
     try:
         await session.run()
     except Exception as exc:  # noqa: BLE001

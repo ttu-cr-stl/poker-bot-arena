@@ -5,10 +5,10 @@ Use this page as your quick “Did we cover everything?” before you hand in yo
 ---
 
 ## 1. Basic protocol
-- [ ] First message after connecting is `hello` with both `team` and `join_code`.
+- [ ] First message after connecting is `hello` with your `team` name (case-insensitive).
 - [ ] You can read `act` prompts and reply with `action` within the time limit.
 - [ ] You handle `event`, `end_hand`, `match_end`, and `error` messages without crashing.
-- [ ] If you disconnect, restarting with the same team/join code reclaims your seat.
+- [ ] If you disconnect, restarting with the same team name reclaims your seat.
 
 ## 2. Making decisions
 - [ ] Your bot can send any legal move (`FOLD`, `CHECK`, `CALL`, `RAISE_TO`).
@@ -36,4 +36,4 @@ Use this page as your quick “Did we cover everything?” before you hand in yo
 
 ---
 
-Bring your bot script, your join code, and the ability to reconnect quickly. If every box is checked, you’re ready. Good luck out there!
+Bring your bot script, your team name, and the ability to reconnect quickly. If every box is checked, you’re ready. Good luck out there!

@@ -25,7 +25,6 @@ class ClientSession:
     seat: int
     team: str
     websocket: WebSocketServerProtocol
-    join_code: str
 
 
 @dataclass
@@ -59,17 +58,20 @@ class HostServer:
             await self._send_error(websocket, code="BAD_HELLO", msg="Expected hello")
             await websocket.close()
             return
-
-        team = hello.get("team")
-        join_code = hello.get("join_code")
-        if not isinstance(team, str) or not isinstance(join_code, str):
-            await self._send_error(websocket, code="BAD_SCHEMA", msg="team/join_code required")
+        team_raw = hello.get("team")
+        if not isinstance(team_raw, str):
+            await self._send_error(websocket, code="BAD_SCHEMA", msg="team required")
+            await websocket.close()
+            return
+        team = team_raw.strip()
+        if not team:
+            await self._send_error(websocket, code="BAD_SCHEMA", msg="team required")
             await websocket.close()
             return
 
         try:
             async with self.lock:
-                seat = self.engine.assign_seat(team, join_code)
+                seat = self.engine.assign_seat(team)
         except ValueError as exc:
             code = str(exc)
             await self._send_error(websocket, code=code, msg="Seat claim rejected")
@@ -85,7 +87,7 @@ class HostServer:
         if previous:
             await previous.websocket.close(code=4000, reason="Replaced by new connection")
 
-        session = ClientSession(seat=seat.seat, team=team, websocket=websocket, join_code=join_code)
+        session = ClientSession(seat=seat.seat, team=seat.team, websocket=websocket)
         self.sessions[seat.seat] = session
         async with self.lock:
             self.engine.set_connected(seat.seat, True)
