@@ -7,11 +7,8 @@ kill_timeout = "5s"
 [build]
   dockerfile = "Dockerfile"
 
-[env]
-  MOVE_TIME_MS = "15000"
-
 [processes]
-  tournament = "python -m tournament --host 0.0.0.0 --port 8080 --seats 6 --starting-stack 10000 --sb 50 --bb 100 --move-time $MOVE_TIME_MS"
+  tournament = "python -m tournament --host 0.0.0.0 --port 8080 --seats 6 --starting-stack 10000 --sb 50 --bb 100 --move-time 15000"
 
 [checks]
   [checks.websocket]
@@ -28,7 +25,6 @@ kill_timeout = "5s"
   auto_start_machines = true
   min_machines = 1
   max_machines = 1
-  processes = ["tournament"]
 
   [http_service.concurrency]
     type = "connections"
