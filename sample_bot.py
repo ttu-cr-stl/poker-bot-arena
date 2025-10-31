@@ -3,8 +3,7 @@
 Starter bot template for Poker Bot Arena teams.
 
 Usage:
-    python sample_bot.py --team MyBot --code SECRET \
-        --url ws://127.0.0.1:9876/ws
+    python sample_bot.py --team MyBot --code SECRET --url ws://127.0.0.1:9876/ws
 
 This script shows the core loop:
   * handshake with the host
