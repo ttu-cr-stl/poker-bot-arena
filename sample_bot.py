@@ -12,6 +12,14 @@ This script shows the core loop:
   * choose an action based on the payload
   * handle simple reconnect logic and logging
 
+The `ActionContext` passed to `choose_action` includes:
+  * Your hole cards (ctx.hole_cards)
+  * Community cards on the board (ctx.community)
+  * Pot size, current bet, and betting constraints
+  * Opponent information (stacks, fold status, committed amounts)
+  * Table configuration (button, blinds, seat count)
+  * Time remaining for your decision
+
 Replace the `choose_action` function with your custom strategy.
 """
 
@@ -39,19 +47,57 @@ SUIT_SYMBOLS = {"c": "♣", "d": "♦", "h": "♥", "s": "♠"}
 
 @dataclass
 class ActionContext:
+    # Hand identification
     hand_id: str
     seat: int
     phase: str
-    legal: list[str]
-    call_amount: Optional[int]
-    min_raise_to: Optional[int]
-    max_raise_to: Optional[int]
+    
+    # Your cards and stack
+    hole_cards: list[str]  # Your two hole cards (e.g., ["Ah", "Kd"])
     stack: int
     committed: int
+    to_call: int  # Amount needed to call
+    
+    # Table state
+    pot: int  # Current pot size
+    current_bet: int  # Current highest bet on table
+    community: list[str]  # Community cards on board (flop, turn, river)
+    
+    # Table configuration
+    button: int  # Seat number of the button
+    sb: int  # Small blind amount
+    bb: int  # Big blind amount
+    seats: int  # Total number of seats
+    
+    # Opponent information
+    players: list[dict[str, Any]]  # List of all players with seat, stack, has_folded, committed
+    
+    # Action constraints
+    legal: list[str]  # Available actions (e.g., ["CHECK", "CALL"], ["FOLD", "CALL", "RAISE_TO"])
+    call_amount: Optional[int]  # Amount needed to call
+    min_raise_to: Optional[int]  # Minimum total to raise to
+    max_raise_to: Optional[int]  # Maximum total to raise to (usually stack + committed)
+    min_raise_increment: int  # Minimum raise increment
+    
+    # Time remaining
+    time_ms: int  # Time remaining to make decision
 
 
 def choose_action(ctx: ActionContext) -> Tuple[str, Optional[int]]:
-    """Very simple strategy used as a starting point for students."""
+    """
+    Very simple strategy used as a starting point for students.
+    
+    This function now has access to:
+    - ctx.hole_cards: Your two hole cards (e.g., ["Ah", "Kd"])
+    - ctx.community: Community cards on board (e.g., ["7c", "8d", "9h"])
+    - ctx.pot: Current pot size
+    - ctx.current_bet: Current highest bet
+    - ctx.players: List of all players with their stacks, fold status, and committed amounts
+    - ctx.button, ctx.sb, ctx.bb: Table configuration
+    - And all other fields in ActionContext
+    
+    Replace this function with your custom strategy!
+    """
 
     # Training wheels strategy: check → call small → fold.
     # Prefer checking whenever it is free.
@@ -239,16 +285,37 @@ async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: st
         if msg_type == "act":
             # Host is asking us to act; choose a move and respond.
             set_phase(message.get("phase"))
+            you = message.get("you", {})
+            table = message.get("table", {})
             ctx = ActionContext(
+                # Hand identification
                 hand_id=message["hand_id"],
                 seat=message["seat"],
-                phase=message["phase"],
-                legal=message["legal"],
+                phase=message.get("phase", "PRE_FLOP"),
+                # Your cards and stack
+                hole_cards=list(you.get("hole", [])),
+                stack=you.get("stack", 0),
+                committed=you.get("committed", 0),
+                to_call=you.get("to_call", 0),
+                # Table state
+                pot=message.get("pot", 0),
+                current_bet=message.get("current_bet", 0),
+                community=list(message.get("community", [])),
+                # Table configuration
+                button=table.get("button", 0),
+                sb=table.get("sb", 0),
+                bb=table.get("bb", 0),
+                seats=table.get("seats", 0),
+                # Opponent information
+                players=list(message.get("players", [])),
+                # Action constraints
+                legal=list(message.get("legal", [])),
                 call_amount=message.get("call_amount"),
                 min_raise_to=message.get("min_raise_to"),
                 max_raise_to=message.get("max_raise_to"),
-                stack=message.get("you", {}).get("stack", 0),
-                committed=message.get("you", {}).get("committed", 0),
+                min_raise_increment=message.get("min_raise_increment", 0),
+                # Time remaining
+                time_ms=you.get("time_ms", 0),
             )
             action, amount = choose_action(ctx)
             if action == "RAISE_TO" and ctx.min_raise_to and amount is not None and amount < ctx.min_raise_to:
