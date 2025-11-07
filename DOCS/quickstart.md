@@ -35,7 +35,7 @@ Open a second terminal, activate the virtual environment again, and run:
 source .venv/bin/activate
 python sample_bot.py --team MyBot --url ws://127.0.0.1:9876/ws
 ```
-You should see messages like `WELCOME`, `START_HAND`, and `act`. The bot already knows the protocol; you only need to change the decision logic in `choose_action`.
+You should see messages like `WELCOME`, `START_HAND`, and `act`. The bot already knows the protocol; you only need to change the decision logic in `choose_action`. The template now guards against illegal moves—if your code asks for an invalid action, it logs a warning and falls back to a safe check/call/fold instead of letting the host eject you.
 
 ---
 

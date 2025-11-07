@@ -87,6 +87,7 @@ def choose_action(ctx: ActionContext) -> Tuple[str, Optional[int]]:
     """
     Very simple strategy used as a starting point for students.
     
+    
     This function now has access to:
     - ctx.hole_cards: Your two hole cards (e.g., ["Ah", "Kd"])
     - ctx.community: Community cards on board (e.g., ["7c", "8d", "9h"])
@@ -118,6 +119,62 @@ def choose_action(ctx: ActionContext) -> Tuple[str, Optional[int]]:
         return "RAISE_TO", target
 
     return "FOLD", None
+
+
+def fallback_action(ctx: ActionContext) -> Tuple[str, Optional[int]]:
+    """Select the safest legal move (check > call > fold > first legal)."""
+
+    if "CHECK" in ctx.legal:
+        return "CHECK", None
+    if "CALL" in ctx.legal:
+        return "CALL", None
+    if "FOLD" in ctx.legal:
+        return "FOLD", None
+    if ctx.legal:
+        return ctx.legal[0], None
+    LOGGER.error("No legal actions supplied; defaulting to FOLD")
+    return "FOLD", None
+
+
+def sanitize_action(action: str, amount: Optional[int], ctx: ActionContext) -> Tuple[str, Optional[int]]:
+    """Ensure the outgoing action abides by the host constraints."""
+
+    if action not in ctx.legal:
+        LOGGER.warning("Illegal action '%s' requested; falling back", action)
+        return fallback_action(ctx)
+
+    if action == "RAISE_TO":
+        if ctx.min_raise_to is None:
+            LOGGER.warning("RAISE_TO chosen but min_raise_to missing; falling back")
+            return fallback_action(ctx)
+        if amount is None:
+            amount = ctx.min_raise_to
+        min_allowed = ctx.min_raise_to
+        max_allowed = ctx.max_raise_to
+        bankroll_cap = ctx.stack + ctx.committed
+        if max_allowed is None or max_allowed > bankroll_cap:
+            max_allowed = bankroll_cap
+        if amount < min_allowed:
+            LOGGER.warning("Raise total %s below minimum %s; clamping", amount, min_allowed)
+            amount = min_allowed
+        if amount > max_allowed:
+            LOGGER.warning("Raise total %s above maximum %s; clamping", amount, max_allowed)
+            amount = max_allowed
+        if amount < min_allowed:
+            # If clamping still invalid (e.g., no chips), bail out.
+            LOGGER.warning("Unable to find legal raise amount; falling back")
+            return fallback_action(ctx)
+        return action, int(amount)
+
+    if action == "CALL" and "CALL" not in ctx.legal:
+        LOGGER.warning("CALL chosen but not legal; falling back")
+        return fallback_action(ctx)
+
+    if action == "CHECK" and "CHECK" not in ctx.legal:
+        LOGGER.warning("CHECK chosen but not legal; falling back")
+        return fallback_action(ctx)
+
+    return action, amount
 
 
 async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: str) -> None:
@@ -318,9 +375,7 @@ async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: st
                 time_ms=you.get("time_ms", 0),
             )
             action, amount = choose_action(ctx)
-            if action == "RAISE_TO" and ctx.min_raise_to and amount is not None and amount < ctx.min_raise_to:
-                LOGGER.warning("Clamping raise from %s to min %s", amount, ctx.min_raise_to)
-                amount = ctx.min_raise_to
+            action, amount = sanitize_action(action, amount, ctx)
             payload: Dict[str, Any] = {
                 "type": "action",
                 "v": 1,

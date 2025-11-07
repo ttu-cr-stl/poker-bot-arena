@@ -583,6 +583,40 @@ class GameEngine:
 
         return payload
 
+    def spectator_state(self, table_id: str, time_ms_remaining: Optional[int]) -> Optional[Dict[str, object]]:
+        if not self.hand:
+            return None
+        ctx = self.hand
+        next_actor = self.next_actor()
+        seats = []
+        for idx, seat in enumerate(self.seats):
+            if seat is None:
+                continue
+            seats.append(
+                {
+                    "seat": idx,
+                    "team": seat.team,
+                    "stack": seat.stack,
+                    "committed": seat.committed,
+                    "hole": list(seat.hole_cards),
+                    "has_folded": seat.has_folded,
+                    "connected": seat.connected,
+                    "is_button": ctx.button == idx if ctx.button is not None else False,
+                }
+            )
+        return {
+            "hand_id": ctx.hand_id,
+            "table_id": table_id,
+            "pot": ctx.pot,
+            "phase": ctx.phase.value,
+            "community": [card.label for card in ctx.community],
+            "seats": seats,
+            "next_actor": next_actor,
+            "time_remaining_ms": time_ms_remaining if next_actor is not None else None,
+            "sb": self.config.sb,
+            "bb": self.config.bb,
+        }
+
     def end_hand_payload(self) -> Dict[str, object]:
         if not self.hand:
             raise RuntimeError("Hand not active")

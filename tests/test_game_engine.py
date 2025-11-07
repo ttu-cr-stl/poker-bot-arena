@@ -406,3 +406,28 @@ def test_timer_fallback_prefers_check_then_call_then_fold():
     assert ActionType.CALL in legal
     events = engine.apply_action(actor, ActionType.CALL, None)
     assert any(ev["ev"] == "CALL" for ev in events)
+
+
+def test_spectator_state_includes_omniscient_view():
+    engine = GameEngine(TableConfig(seats=3, starting_stack=500, sb=10, bb=20))
+    engine.assign_seat("Alpha")
+    engine.assign_seat("Beta")
+    engine.assign_seat("Gamma")
+    ctx = engine.start_hand(seed=99)
+    assert ctx is not None
+
+    state = engine.spectator_state(table_id="T-1", time_ms_remaining=8000)
+    assert state is not None
+    assert state["hand_id"].startswith("H-")
+    assert state["phase"] == ctx.phase.value
+    assert state["pot"] >= engine.config.sb + engine.config.bb
+    assert state["sb"] == engine.config.sb
+    assert state["bb"] == engine.config.bb
+
+    seats = {entry["seat"]: entry for entry in state["seats"]}
+    assert len(seats) == 3
+    assert all(len(entry["hole"]) == 2 for entry in seats.values())
+    assert any(entry["is_button"] for entry in seats.values())
+    assert state["next_actor"] in seats
+    # Since spectator view is omniscient, each seat exposes committed stack data.
+    assert all("committed" in entry for entry in seats.values())

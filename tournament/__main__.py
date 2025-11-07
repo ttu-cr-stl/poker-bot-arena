@@ -18,6 +18,12 @@ def main() -> None:
     parser.add_argument("--sb", type=int, default=50)
     parser.add_argument("--bb", type=int, default=100)
     parser.add_argument(
+        "--hand-control",
+        choices=("auto", "operator"),
+        default="auto",
+        help="auto = hands start immediately when ready, operator = wait for manual START command",
+    )
+    parser.add_argument(
         "--move-time",
         type=int,
         default=15_000,
@@ -40,7 +46,7 @@ def main() -> None:
         move_time_ms=move_time,
     )
 
-    server = HostServer(config)
+    server = HostServer(config, hand_control=args.hand_control)
     asyncio.run(server.start(host=args.host, port=args.port))
 
 

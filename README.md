@@ -63,7 +63,7 @@ python practice/server.py --host 127.0.0.1 --port 9876
 python sample_bot.py --team Demo --url ws://127.0.0.1:9876/ws
 ```
 
-You’ll see `WELCOME`, `START_HAND`, and then `act` prompts. Edit the `choose_action` function and rerun to test new ideas. Seat 0 is always you; seat 1 is the house bot.
+You’ll see `WELCOME`, `START_HAND`, and then `act` prompts. Edit the `choose_action` function and rerun to test new ideas. Seat 0 is always you; seat 1 is the house bot. The template now sanity-checks whatever you return—if you accidentally send an illegal action (bad raise size, typo, etc.) it logs a warning and falls back to the safest legal move instead of getting kicked.
 
 Prefer playing manually? Use:
 ```bash
@@ -76,12 +76,12 @@ Press `h` at the prompt for help on available actions.
 
 ## 5. Building a bot (your options)
 
-1. **Copy the template** – duplicate `sample_bot.py`, rename it, and replace the logic inside `choose_action`.
+1. **Copy the template** – duplicate `sample_bot.py`, rename it, and replace the logic inside `choose_action`. The helper will clamp/correct invalid actions for you, but you’ll still see warnings if your strategy misbehaves.
 2. **Write your own client** – follow the same message flow as the template. The essentials:
    - First message = `{"type": "hello", "v": 1, "team": "..."}`. Team names are case-insensitive; `RoboNerds` and `robonerds` refer to the same seat.
    - Whenever you receive `type="act"`, reply quickly with `{"type": "action", "hand_id": "...", "action": "...", "amount": maybe}`. The default timer is 15 seconds.
    - Expect other messages (`event`, `start_hand`, `end_hand`, `match_end`, `error`) at any time.
-   - If your bot disconnects, reconnect with the same team name to reclaim the seat.
+   - If your bot disconnects, reconnect with the same team name to reclaim the seat. The host now pauses on that seat until you return (or an operator skips/forfeits you), so you won’t get auto-checked out of the pot while rebooting.
 
 Helpful facts:
 - In heads-up play the dealer posts the small blind and acts first pre-flop; after the flop, the other player acts first.
@@ -129,9 +129,30 @@ Work through this short checklist:
 
 Organizers can pause the clock if needed, but you should plan on the normal timers being active.
 
+**Running the showcase table.** On tournament day we typically launch the host with manual pacing:
+
+```bash
+python -m tournament --host 0.0.0.0 --port 8765 --seats <team_count> --hand-control operator
+```
+
+That keeps the table paused between hands until the operator clicks “Start next hand” in the spectator UI (`?control=true`). Use automatic mode (the default) during local practice when you don’t need the extra ceremony.
+
 ---
 
-## 8. Helpful links
+## 8. Spectator & operator dashboard primer
+
+Running a stream or acting as the table operator? The `spectator-ui/` app has your back:
+
+- **Hand timeline:** Each entry shows the winner’s best five-card combo plus the final pot share, so browsing history from the sidebar stays readable even inside the narrow layout.
+- **Replay controls:** Playhead/target playback means the speed slider applies immediately (including at the start of a new hand). The updated presets keep 1× at a broadcast-friendly cadence, and you can still scrub freely.
+- **Autoplay batches:** When you queue multiple auto-hands, playback jumps straight to the newest frame instead of replaying each card in slow motion.
+- **Event ticker:** The ticker keeps a fixed two-line height and cycles through the most recent actions and street transitions, which keeps the table shell from jumping.
+- **Seat panels:** Skip/forfeit controls are unobtrusive dots, the action label resets each street, and a red badge denotes disconnected bots while their stacks/cards remain visible.
+- **Disconnect handling:** The host now waits for a disconnected team to return (or for an operator skip/forfeit) rather than auto-checking them. Once they reconnect, the pending `act` payload is resent and play resumes.
+
+---
+
+## 9. Helpful links
 
 - [`DOCS/architecture.md`](DOCS/architecture.md) – big-picture overview.
 - [`DOCS/quickstart.md`](DOCS/quickstart.md) – the freshman-friendly setup guide.
@@ -141,7 +162,7 @@ Organizers can pause the clock if needed, but you should plan on the normal time
 
 ---
 
-## 9. Need to tweak or contribute?
+## 10. Need to tweak or contribute?
 
 If you spot a bug or want to improve the project:
 1. Open an issue that explains what you saw and what you expected.
@@ -152,6 +173,6 @@ We run `python -m pytest` (and usually a short practice match) before merging ch
 
 ---
 
-## 10. Final words
+## 11. Final words
 
 Focus on three things: understand the JSON messages, keep your bot responsive, and test against the practice host until it feels routine. Do that and tournament day will be smooth. Good luck—and may the turn and river treat you well! 🎴
