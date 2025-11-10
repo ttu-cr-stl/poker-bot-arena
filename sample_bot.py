@@ -5,6 +5,8 @@ Starter bot template for Poker Bot Arena teams.
 Usage:
     pip install websockets==12.0
     python sample_bot.py --team TEAM_NAME --url wss://poker-bot-arena.fly.dev/
+    # Local A/B testing against the practice server
+    python sample_bot.py --team TEAM_NAME --bot A --url ws://127.0.0.1:9876/ws
 
 This script shows the core loop:
   * handshake with the host
@@ -247,6 +249,14 @@ async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: st
             )
             continue
 
+        if msg_type == "ab_status":
+            LOGGER.info(
+                "[practice] waiting for partner | bot=%s state=%s",
+                message.get("bot"),
+                message.get("state"),
+            )
+            continue
+
         if msg_type == "start_hand":
             # Reset per-hand state and record baseline info for the recap.
             state["hand_id"] = message.get("hand_id")
@@ -471,7 +481,7 @@ async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: st
         LOGGER.debug("Ignoring message type=%s", msg_type)
 
 
-async def run_bot(team: str, url: str) -> None:
+async def run_bot(team: str, url: str, bot: Optional[str] = None) -> None:
     try:
         async with websockets.connect(url) as ws:
             hello = {
@@ -479,6 +489,8 @@ async def run_bot(team: str, url: str) -> None:
                 "v": 1,
                 "team": team,
             }
+            if bot:
+                hello["bot"] = bot
             await ws.send(json.dumps(hello))
             LOGGER.info("[connect] %s as %s", url, team)
             # Stay inside play_hand until the server sends match_end.
@@ -496,13 +508,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--team", required=True, help="Team name registered with the host")
     parser.add_argument("--url", default="ws://127.0.0.1:9876/ws", help="WebSocket URL")
     parser.add_argument("--log-level", default="INFO")
+
+    def _bot(value: str) -> str:
+        result = value.strip().upper()
+        if result not in {"A", "B"}:
+            raise argparse.ArgumentTypeError("--bot must be A or B")
+        return result
+
+    parser.add_argument(
+        "--bot",
+        type=_bot,
+        help="Optional practice slot (A or B) to enable in-server A/B testing",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     LOGGER.setLevel(getattr(logging, args.log_level.upper(), logging.INFO))
-    asyncio.run(run_bot(args.team, args.url))
+    asyncio.run(run_bot(args.team, args.url, bot=args.bot))
 
 
 # ---------------------------------------------------------------------------

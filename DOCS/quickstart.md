@@ -28,7 +28,7 @@ Leave this terminal window running—you’ll play against it from another windo
 
 ---
 
-## 3. Run the sample bot
+## 3. Run the sample bot (solo or A/B pairs)
 
 Open a second terminal, activate the virtual environment again, and run:
 ```bash
@@ -36,6 +36,15 @@ source .venv/bin/activate
 python sample_bot.py --team MyBot --url ws://127.0.0.1:9876/ws
 ```
 You should see messages like `WELCOME`, `START_HAND`, and `act`. The bot already knows the protocol; you only need to change the decision logic in `choose_action`. The template now guards against illegal moves—if your code asks for an invalid action, it logs a warning and falls back to a safe check/call/fold instead of letting the host eject you.
+
+Want to compare two strategies head-to-head while the practice bot watches? Launch a second client with the same `--team` but pass `--bot A` on the first process and `--bot B` on the second:
+
+```bash
+python sample_bot.py --team MyBot --bot A --url ws://127.0.0.1:9876/ws
+python sample_bot.py --team MyBot --bot B --url ws://127.0.0.1:9876/ws
+```
+
+The server waits until both slots connect, then opens a 3-seat table (A vs B vs house). If one disconnects mid-match, reconnect with the same `--bot` label to reclaim the seat.
 
 ---
 

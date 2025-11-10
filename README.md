@@ -12,7 +12,7 @@ Welcome! This project walks you from “I just opened the repo” to “my bot i
 
 ```
 core/         Card shuffling, hand evaluation, betting rules (no networking)
-practice/     Mini server for 1‑on‑1 practice vs our “house” bot
+practice/     Mini server for solo heads-up practice or two-bot A/B tests vs our “house” bot
 tournament/   Real tournament server (many seats, timers)
 scripts/      Extra tools: manual client, stress scripts
 tests/        Automated tests that keep the poker logic safe
@@ -71,6 +71,17 @@ python scripts/manual_client.py --team Alice --url ws://127.0.0.1:9876/ws
 ```
 
 Press `h` at the prompt for help on available actions.
+
+### Optional: pit two strategies against each other
+
+Run two bots with the same team name but different slots to launch a three-seat table (Bot A, Bot B, plus the house bot). Example:
+
+```bash
+python sample_bot.py --team Demo --bot A --url ws://127.0.0.1:9876/ws
+python sample_bot.py --team Demo --bot B --url ws://127.0.0.1:9876/ws
+```
+
+Each client logs `[practice] waiting for partner` until both slots connect. Once a match starts, the table stays reserved for that team until the session ends, so you can restart either bot mid-match without losing the seat.
 
 ---
 
