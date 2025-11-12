@@ -363,9 +363,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Remote vs sample-bot practice server")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=9876)
-    parser.add_argument("--starting-stack", type=int, default=5_000)
-    parser.add_argument("--sb", type=int, default=25)
-    parser.add_argument("--bb", type=int, default=50)
+    parser.add_argument("--starting-stack", type=int, default=6_000)
+    parser.add_argument("--sb", type=int, default=50)
+    parser.add_argument("--bb", type=int, default=100)
     args = parser.parse_args()
 
     config = TableConfig(seats=2, starting_stack=args.starting_stack, sb=args.sb, bb=args.bb)

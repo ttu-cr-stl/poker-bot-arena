@@ -14,9 +14,9 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--seats", type=int, default=6)
-    parser.add_argument("--starting-stack", type=int, default=10_000)
-    parser.add_argument("--sb", type=int, default=50)
-    parser.add_argument("--bb", type=int, default=100)
+    parser.add_argument("--starting-stack", type=int, default=8_000)
+    parser.add_argument("--sb", type=int, default=100)
+    parser.add_argument("--bb", type=int, default=200)
     parser.add_argument(
         "--hand-control",
         choices=("auto", "operator"),

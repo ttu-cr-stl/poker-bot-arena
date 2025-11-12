@@ -179,8 +179,14 @@ def sanitize_action(action: str, amount: Optional[int], ctx: ActionContext) -> T
     return action, amount
 
 
-async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: str) -> None:
+async def play_hand(
+    websocket: websockets.WebSocketServerProtocol,
+    team_name: str,
+    bot_label: Optional[str] = None,
+) -> None:
     """Listen for host messages, respond to act prompts, and log hand summaries."""
+
+    display_name = f"{team_name} ({bot_label})" if bot_label else team_name
 
     state: Dict[str, Any] = {
         "seat": None,
@@ -191,6 +197,8 @@ async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: st
         "hand_log": None,
         "hand_counter": 0,
         "team_name": team_name,
+        "team_display": display_name,
+        "bot_label": bot_label,
         "seat_map": {},
     }
 
@@ -210,8 +218,8 @@ async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: st
         if seat is None:
             return "Seat ?"
         if seat == state.get("seat"):
-            name = state.get("team_name") or f"Seat {seat}"
-            return f"{name} (bot, seat {seat})"
+            name = state.get("team_display") or state.get("team_name") or f"Seat {seat}"
+            return name
         seat_count = state.get("seat_count")
         team = state.get("seat_map", {}).get(seat)
         if team:
@@ -238,7 +246,7 @@ async def play_hand(websocket: websockets.WebSocketServerProtocol, team_name: st
             state["seat"] = message.get("seat")
             cfg = message.get("config", {})
             state["seat_count"] = cfg.get("seats")
-            register_seat(state, state["seat"], state.get("team_name"))
+            register_seat(state, state["seat"], state.get("team_display"))
             LOGGER.info(
                 "[welcome] seat %s | variant=%s seats=%s sb=%s bb=%s",
                 seat_label(state["seat"]),
@@ -492,9 +500,10 @@ async def run_bot(team: str, url: str, bot: Optional[str] = None) -> None:
             if bot:
                 hello["bot"] = bot
             await ws.send(json.dumps(hello))
-            LOGGER.info("[connect] %s as %s", url, team)
+            label = f"{team} ({bot})" if bot else team
+            LOGGER.info("[connect] %s as %s", url, label)
             # Stay inside play_hand until the server sends match_end.
-            await play_hand(ws, team)
+            await play_hand(ws, team, bot_label=bot)
     except websockets.exceptions.InvalidStatusCode as exc:
         if exc.status_code in {502, 503}:  # typical cold-start codes on Render/Fly free tiers
             LOGGER.error("Server reported %s (service warming up?). Wait 30s and retry.", exc.status_code)
