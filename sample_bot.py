@@ -6,7 +6,7 @@ Usage:
     pip install websockets==12.0
     python sample_bot.py --team TEAM_NAME --url wss://poker-bot-arena.fly.dev/
     # Local A/B testing against the practice server
-    python sample_bot.py --team TEAM_NAME --bot A --url ws://127.0.0.1:9876/ws
+    python sample_bot.py --team TEAM_NAME --bot A --url wss://poker-bot-arena.fly.dev/
 
 This script shows the core loop:
   * handshake with the host
