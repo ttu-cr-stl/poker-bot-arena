@@ -18,4 +18,4 @@ RUN python -m pip install --upgrade pip \
     && python -m pip install --no-cache-dir .
 
 # Default to the 4-seat tournament host tuned for ~45-minute, operator-paced events.
-CMD ["python", "-m", "tournament", "--host", "0.0.0.0", "--port", "8080", "--seats", "3", "--starting-stack", "8000", "--sb", "100", "--bb", "200", "--hand-control", "operator"]
+CMD ["python", "-m", "tournament", "--host", "0.0.0.0", "--port", "8080", "--seats", "6", "--starting-stack", "8000", "--sb", "100", "--bb", "200", "--hand-control", "operator"]
